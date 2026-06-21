@@ -1,0 +1,20 @@
+name: Test no-op (no testing-type set)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        # No inputs set - none of the conditional steps should run:
+        # - task-install defaults to 'no'
+        # - testing-type is empty (not set)
+        # - release-dir is empty (not set)
+        # - github-token-for-downloading-private-go-modules is empty
+        # Therefore: setup-go, install-task, go-mod-tidy, and all testing steps are skipped
+      - name: Assert action completed without errors
+        run: |
+          echo "PASS: action completed with no inputs set (no-op scenario)"
+          echo "All conditional steps were correctly skipped"

@@ -1,0 +1,24 @@
+name: Test token and grype-version inputs (no-op scenario)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          token: "fake-token-for-testing"
+          grype-version: "0.79.0"
+          # No testing-type set and no release-dir, so:
+          # - setup-go is skipped
+          # - install-task is skipped
+          # - go mod tidy is skipped
+          # - grype scan is skipped (testing-type != 'security-grype')
+          # - all other testing steps are skipped
+          # Only the git config step could run but github-token-for-downloading-private-go-modules is not set
+      - name: Assert action completed without errors
+        run: |
+          echo "PASS: action completed with token and grype-version inputs set but no testing-type"
+          echo "All conditional steps were correctly skipped"

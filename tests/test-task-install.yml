@@ -1,0 +1,27 @@
+name: Test private go modules git config
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          github-token-for-downloading-private-go-modules: "fake-token-for-testing"
+          # No testing-type or release-dir set, so:
+          # - setup-go is skipped
+          # - install-task is skipped
+          # - go mod tidy is skipped
+          # Only the git config step runs (because github-token-for-downloading-private-go-modules != '')
+      - name: Assert git config was set for private modules
+        run: |
+          echo "Checking git config for private module URL rewrite..."
+          ACTUAL=$(git config --global url.https://fake-token-for-testing@github.com/.insteadOf 2>/dev/null || echo "")
+          echo "actual: $ACTUAL"
+          if [ "$ACTUAL" != "https://github.com/" ]; then
+            echo "FAIL: expected git config to be set to 'https://github.com/' but got '$ACTUAL'"
+            exit 1
+          fi
+          echo "PASS: git config was correctly set for private module access"

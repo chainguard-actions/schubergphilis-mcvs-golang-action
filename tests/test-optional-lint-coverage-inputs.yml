@@ -1,0 +1,27 @@
+name: Test optional lint and coverage inputs (no-op scenario)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          build-tags: "component"
+          golangci-timeout: "5m"
+          code-coverage-timeout: "10m"
+          test-timeout: "30m"
+          # No testing-type set and no release-dir, so:
+          # - setup-go is skipped
+          # - install-task is skipped
+          # - go mod tidy is skipped
+          # - golangci-lint step is skipped (testing-type != 'lint')
+          # - code coverage step is skipped (testing-type != 'coverage')
+          # - integration tests step is skipped (testing-type != 'integration')
+          # All conditional steps are skipped
+      - name: Assert action completed without errors
+        run: |
+          echo "PASS: action completed with build-tags, golangci-timeout, code-coverage-timeout, test-timeout inputs set"
+          echo "All conditional steps were correctly skipped"

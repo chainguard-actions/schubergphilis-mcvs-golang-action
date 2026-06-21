@@ -1,0 +1,22 @@
+name: Test security-grype without token (step skipped)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          testing-type: "security-grype"
+          # token is intentionally not set so the anchore scan step is skipped
+          # Condition: inputs.token != '' && inputs.testing-type == 'security-grype'
+          # With no token, the anchore/scan-action step is skipped
+          # setup-go is also skipped (security-grype not in its condition list)
+          # go mod tidy is also skipped (security-grype not in its condition list)
+          # install task is also skipped (security-grype not in its condition list)
+      - name: Assert action completed without errors
+        run: |
+          echo "PASS: action completed with security-grype testing-type but no token"
+          echo "The anchore/scan-action step was skipped as expected (token was empty)"

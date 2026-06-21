@@ -1,0 +1,50 @@
+name: Test release build inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/tags/v1.0.0
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Set up minimal Go project in workspace
+        run: |
+          # Create a go.mod in the workspace root so go mod tidy and setup-go work
+          printf 'module github.com/test/mcvs-golang-action-test\n\ngo 1.21\n' > "$GITHUB_WORKSPACE/go.mod"
+
+          # Create the source directory and main.go for the build
+          mkdir -p "$GITHUB_WORKSPACE/cmd/app"
+          printf 'package main\n\nimport "fmt"\n\nvar Version = "dev"\n\nfunc main() {\n\tfmt.Printf("version: %%s\\n", Version)\n}\n' > "$GITHUB_WORKSPACE/cmd/app/main.go"
+      - id: action
+        uses: .
+        with:
+          token: "fake-token-for-testing"
+          release-dir: "cmd/app"
+          release-application-name: "myapp"
+          release-architecture: "amd64"
+          release-type: "binary"
+          release-build-tags: "netgo"
+          # release-dir != '' triggers: setup-go, install-task, go mod tidy, build binary
+          # go-version-file defaults to go.mod (created above in workspace root)
+      - name: Assert binary was built
+        run: |
+          echo "Checking that the binary was built..."
+          BINARY_PATH="$GITHUB_WORKSPACE/build/binary/myapp/amd64/main"
+          if [ ! -f "$BINARY_PATH" ]; then
+            echo "FAIL: expected binary not found at $BINARY_PATH"
+            ls -la "$GITHUB_WORKSPACE/build/" 2>/dev/null || echo "build dir does not exist"
+            exit 1
+          fi
+          echo "PASS: binary was built at $BINARY_PATH"
+      - name: Assert binary is executable
+        run: |
+          BINARY_PATH="$GITHUB_WORKSPACE/build/binary/myapp/amd64/main"
+          echo "Checking binary is executable..."
+          if [ ! -x "$BINARY_PATH" ]; then
+            echo "FAIL: binary at $BINARY_PATH is not executable"
+            ls -la "$BINARY_PATH" 2>/dev/null || echo "file not found"
+            exit 1
+          fi
+          echo "PASS: binary is executable"
