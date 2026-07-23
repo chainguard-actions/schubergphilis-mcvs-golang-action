@@ -1,0 +1,55 @@
+name: Test release build scenario
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create go.mod at workspace root for go mod tidy
+        run: |
+          # go mod tidy runs in $GITHUB_WORKSPACE when release-dir is set.
+          # The workspace root has no go.mod, so we create a minimal one.
+          # git diff --exit-code only checks tracked files, so this untracked
+          # file won't cause the tidy check to fail.
+          cat > "$GITHUB_WORKSPACE/go.mod" << 'EOF'
+module github.com/test/release-build-test
+
+go 1.23.0
+EOF
+      - name: Run action with release build inputs
+        id: action
+        uses: .
+        with:
+          release-dir: hardened/tests/fixtures/app
+          release-application-name: myapp
+          release-architecture: amd64
+          release-type: binary
+          token: ${{ github.token }}
+          go-version-file: hardened/tests/fixtures/app/go.mod
+      - name: Assert binary was built
+        run: |
+          BINARY_PATH="$GITHUB_WORKSPACE/build/binary/myapp/amd64/main"
+          echo "Checking for binary at: $BINARY_PATH"
+          if [ ! -f "$BINARY_PATH" ]; then
+            echo "FAIL: expected binary not found at $BINARY_PATH"
+            ls -la "$GITHUB_WORKSPACE/build/binary/myapp/amd64/" 2>/dev/null || echo "(directory does not exist)"
+            exit 1
+          fi
+          echo "PASS: binary exists at $BINARY_PATH"
+      - name: Assert asset name output is set
+        env:
+          ASSET_NAME: ${{ steps.action.outputs.asset_name }}
+        run: |
+          echo "asset_name: '$ASSET_NAME'"
+          if [ -z "$ASSET_NAME" ]; then
+            echo "FAIL: asset_name output is empty"
+            exit 1
+          fi
+          # Asset name should contain the app name, os, and arch
+          if echo "$ASSET_NAME" | grep -q "myapp"; then
+            echo "PASS: asset_name contains 'myapp': $ASSET_NAME"
+          else
+            echo "FAIL: asset_name does not contain 'myapp': $ASSET_NAME"
+            exit 1
+          fi

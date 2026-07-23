@@ -1,0 +1,38 @@
+name: Test task install
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run action with task-install yes
+        id: action
+        uses: .
+        with:
+          task-install: "yes"
+          task-version: "3.40.0"
+          go-version-file: "tests/fixtures/app/go.mod"
+      - name: Assert task is installed and runnable
+        run: |
+          echo "Checking that task is installed..."
+          # setup-go adds GOPATH/bin to PATH, so task should be directly accessible
+          # Also check GOPATH/bin explicitly as a fallback
+          GOPATH_BIN="$(go env GOPATH)/bin"
+          echo "GOPATH/bin: ${GOPATH_BIN}"
+          export PATH="${GOPATH_BIN}:${PATH}"
+
+          if ! command -v task &>/dev/null; then
+            echo "FAIL: task binary not found in PATH or GOPATH/bin (${GOPATH_BIN})"
+            ls -la "${GOPATH_BIN}" 2>/dev/null || echo "(GOPATH/bin does not exist)"
+            exit 1
+          fi
+
+          TASK_VERSION_OUTPUT=$(task --version 2>&1)
+          echo "task version output: ${TASK_VERSION_OUTPUT}"
+          if echo "${TASK_VERSION_OUTPUT}" | grep -q "Task version: v3.40.0"; then
+            echo "PASS: task 3.40.0 is installed"
+          else
+            echo "FAIL: expected task version 3.40.0, got: ${TASK_VERSION_OUTPUT}"
+            exit 1
+          fi

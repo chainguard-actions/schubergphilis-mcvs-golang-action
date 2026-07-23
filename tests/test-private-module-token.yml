@@ -1,0 +1,31 @@
+name: Test private module token configuration
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run action with private module token
+        id: action
+        uses: .
+        with:
+          github-token-for-downloading-private-go-modules: "test-token-12345"
+          go-version-file: tests/fixtures/app/go.mod
+          # No testing-type or release-dir so Go setup and go mod tidy are skipped
+      - name: Assert git is configured with the token
+        run: |
+          echo "Checking git URL rewrite configuration..."
+          # The action sets: git config --global url.https://<token>@github.com/.insteadOf https://github.com/
+          # Check the global git config for the URL rewrite
+          GIT_CONFIG_OUTPUT=$(git config --global --get "url.https://test-token-12345@github.com/.insteadOf" 2>&1 || true)
+          echo "git config output: '${GIT_CONFIG_OUTPUT}'"
+          if [ "${GIT_CONFIG_OUTPUT}" = "https://github.com/" ]; then
+            echo "PASS: git URL rewrite is configured correctly"
+          else
+            echo "FAIL: expected git URL rewrite to be 'https://github.com/', got: '${GIT_CONFIG_OUTPUT}'"
+            # Also dump the full git config for debugging
+            echo "Full global git config:"
+            git config --global --list 2>&1 || true
+            exit 1
+          fi

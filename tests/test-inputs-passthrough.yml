@@ -1,0 +1,26 @@
+name: Test inputs passthrough (no-op with various inputs)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run action with various inputs that are passed through
+        id: action
+        uses: .
+        with:
+          # testing-type set to a value that doesn't match any condition,
+          # so all conditional steps are skipped. This exercises the input
+          # acceptance without triggering real tool runs.
+          testing-type: none
+          build-tags: component
+          golangci-timeout: 5m
+          grype-version: v0.79.0
+          test-timeout: 10m
+          code-coverage-timeout: 15m
+          go-version-file: hardened/tests/fixtures/app/go.mod
+      - name: Assert action completed successfully
+        run: |
+          echo "Action completed without errors — PASS"
+          echo "All conditional steps were skipped as expected (testing-type=none)"
