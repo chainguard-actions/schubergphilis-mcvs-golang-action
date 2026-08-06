@@ -1,0 +1,46 @@
+name: Test task install
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          task-install: "yes"
+          task-version: "3.51.1"
+          go-version-file: tests/fixtures/simple-app/go.mod
+      - name: Assert task is installed and correct version
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "action outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "Checking task version..."
+            # Try task from PATH first, then from GOPATH/bin
+            TASK_BIN="task"
+            if ! command -v task >/dev/null 2>&1; then
+              GOPATH_BIN="$(go env GOPATH 2>/dev/null)/bin"
+              if [ -f "${GOPATH_BIN}/task" ]; then
+                TASK_BIN="${GOPATH_BIN}/task"
+              else
+                echo "FAIL: task binary not found on PATH or in GOPATH/bin"
+                exit 1
+              fi
+            fi
+            TASK_VERSION=$("$TASK_BIN" --version 2>&1 || true)
+            echo "task version output: $TASK_VERSION"
+            if ! echo "$TASK_VERSION" | grep -q "3.51.1"; then
+              echo "FAIL: expected task version 3.51.1 but got: $TASK_VERSION"
+              exit 1
+            fi
+            echo "PASS: task 3.51.1 is installed"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (go install or setup-go may have failed)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

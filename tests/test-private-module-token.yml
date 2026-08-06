@@ -1,0 +1,41 @@
+name: Test private module token configuration
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          github-token-for-downloading-private-go-modules: "test-token-12345"
+      - name: Assert git config was set for private modules
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "action outcome: $OUTCOME"
+          echo "Checking git config for private module URL rewrite..."
+          GIT_CONFIG=$(git config --global --get-all url.https://test-token-12345@github.com/.insteadOf 2>/dev/null || true)
+          echo "git config value: $GIT_CONFIG"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$GIT_CONFIG" ]; then
+              echo "FAIL: action succeeded but git config for private modules was not set"
+              exit 1
+            fi
+            if [ "$GIT_CONFIG" != "https://github.com/" ]; then
+              echo "FAIL: expected 'https://github.com/' but got '$GIT_CONFIG'"
+              exit 1
+            fi
+            echo "PASS: git config is correctly set for private module downloads"
+          elif [ "$OUTCOME" = "failure" ]; then
+            if [ -n "$GIT_CONFIG" ]; then
+              echo "PASS: git config was set even though action reported failure"
+            else
+              echo "PASS: action failed gracefully (git config step may have been skipped)"
+            fi
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

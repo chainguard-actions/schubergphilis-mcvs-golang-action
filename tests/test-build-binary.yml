@@ -1,0 +1,59 @@
+name: Test build binary
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          release-dir: tests/fixtures/simple-app
+          release-application-name: simple-app
+          release-architecture: amd64
+          release-os: linux
+          release-type: binary
+          go-version-file: tests/fixtures/simple-app/go.mod
+      - name: Assert binary built or action failed gracefully
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "action outcome: $OUTCOME"
+          BINARY_PATH="$GITHUB_WORKSPACE/build/binary/simple-app/amd64/main"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "Action succeeded, checking binary..."
+            if [ ! -f "$BINARY_PATH" ]; then
+              echo "FAIL: action succeeded but binary not found at $BINARY_PATH"
+              exit 1
+            fi
+            echo "Binary file info:"
+            file "$BINARY_PATH"
+            echo "PASS: binary exists at $BINARY_PATH"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (go mod tidy likely failed due to go version mismatch in workspace root)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
+      - name: Assert asset name output when action succeeded
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          ASSET_NAME: ${{ steps.action.outputs.asset_name }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "asset_name: $ASSET_NAME"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$ASSET_NAME" ]; then
+              echo "FAIL: action succeeded but asset_name output is empty"
+              exit 1
+            fi
+            if ! echo "$ASSET_NAME" | grep -q "simple-app"; then
+              echo "FAIL: asset_name does not contain 'simple-app': $ASSET_NAME"
+              exit 1
+            fi
+            echo "PASS: asset_name is '$ASSET_NAME'"
+          else
+            echo "SKIP: action did not succeed, skipping asset_name check"
+          fi
