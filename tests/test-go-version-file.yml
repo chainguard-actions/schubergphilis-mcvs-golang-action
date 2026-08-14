@@ -1,0 +1,43 @@
+name: Test go-version-file input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          go-version-file: "go.mod"
+          release-dir: "tests/fixtures/cmd/hello"
+          release-application-name: "myapp"
+          release-architecture: "arm64"
+          release-os: "linux"
+          release-type: "binary"
+          release-build-tags: "mytag"
+      - name: Assert binary was built for arm64
+        run: |
+          BINARY_PATH="build/binary/myapp/arm64/main"
+          echo "Checking for binary at: $BINARY_PATH"
+          if [ ! -f "$BINARY_PATH" ]; then
+            echo "FAIL: binary not found at $BINARY_PATH"
+            find build/ -type f 2>/dev/null || echo "build/ directory not found"
+            exit 1
+          fi
+          echo "PASS: binary exists at $BINARY_PATH"
+      - name: Assert asset name contains arm64
+        env:
+          ASSET_NAME: ${{ steps.action.outputs.asset_name }}
+        run: |
+          echo "asset_name: $ASSET_NAME"
+          if [ -z "$ASSET_NAME" ]; then
+            echo "FAIL: asset_name output is empty"
+            exit 1
+          fi
+          if echo "$ASSET_NAME" | grep -q "arm64"; then
+            echo "PASS: asset_name contains architecture: $ASSET_NAME"
+          else
+            echo "FAIL: asset_name does not contain 'arm64': $ASSET_NAME"
+            exit 1
+          fi

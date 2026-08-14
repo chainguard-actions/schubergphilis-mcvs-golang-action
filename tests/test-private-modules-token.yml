@@ -1,0 +1,46 @@
+name: Test github-token-for-downloading-private-go-modules input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Pre-install fake task binary matching expected version
+        run: |
+          # Create a fake task binary so the action's version check passes
+          printf '#!/bin/sh\necho "Task version: v3.51.1"\n' > /usr/local/bin/task
+          chmod +x /usr/local/bin/task
+          echo "Fake task installed: $(task --version)"
+      - id: action
+        uses: .
+        with:
+          go-version-file: "go.mod"
+          release-dir: "tests/fixtures/cmd/hello"
+          release-application-name: "hello"
+          release-architecture: "amd64"
+          release-os: "linux"
+          release-type: "binary"
+          release-build-tags: "mytag"
+          github-token-for-downloading-private-go-modules: ${{ github.token }}
+      - name: Assert binary was built (private modules token was accepted)
+        run: |
+          BINARY_PATH="build/binary/hello/amd64/main"
+          echo "Checking for binary at: $BINARY_PATH"
+          if [ ! -f "$BINARY_PATH" ]; then
+            echo "FAIL: binary not found at $BINARY_PATH"
+            find build/ -type f 2>/dev/null || echo "build/ directory not found"
+            exit 1
+          fi
+          echo "PASS: binary exists — github-token-for-downloading-private-go-modules was accepted"
+      - name: Assert git config was set for private modules
+        run: |
+          echo "Checking git config for private module URL rewrite..."
+          GIT_CONFIG=$(git config --global --list 2>/dev/null || true)
+          echo "git config: $GIT_CONFIG"
+          if echo "$GIT_CONFIG" | grep -q "url.https://"; then
+            echo "PASS: git URL rewrite config was set for private modules"
+          else
+            echo "FAIL: git URL rewrite config not found"
+            exit 1
+          fi
