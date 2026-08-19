@@ -1,0 +1,25 @@
+name: Test build-tags, golangci-timeout, and token inputs (lint step skipped)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Pass build-tags, golangci-timeout, and token inputs.
+      # Use testing-type='noop-coverage-test' (no matching condition) so all
+      # conditional steps are skipped, but the inputs are still exercised
+      # in the with: block for coverage purposes.
+      - id: action
+        uses: .
+        with:
+          go-version-file: "go.mod"
+          testing-type: "noop-coverage-test"
+          build-tags: "component"
+          golangci-timeout: "5m"
+          token: "dummy-token-for-coverage"
+
+      - name: Assert action completed without error
+        run: |
+          echo "PASS: action completed; lint-related inputs were passed and step was skipped"

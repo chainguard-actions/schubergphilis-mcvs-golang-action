@@ -1,0 +1,28 @@
+name: Test github-token-for-downloading-private-go-modules input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Pass github-token-for-downloading-private-go-modules to exercise the
+      # git config step. No testing-type is set so no other steps run.
+      - id: action
+        uses: .
+        with:
+          go-version-file: "go.mod"
+          github-token-for-downloading-private-go-modules: "dummy-private-token"
+
+      - name: Assert git config was applied
+        run: |
+          echo "Checking git config for insteadOf..."
+          GIT_CONFIG=$(git config --global --list 2>/dev/null || true)
+          echo "git config: $GIT_CONFIG"
+          if echo "$GIT_CONFIG" | grep -q "insteadof"; then
+            echo "PASS: git insteadOf config was set"
+          else
+            echo "FAIL: git insteadOf config was not found"
+            exit 1
+          fi

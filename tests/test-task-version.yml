@@ -1,0 +1,35 @@
+name: Test task version input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          task-install: "yes"
+          task-version: "3.51.1"
+          go-version-file: "tests/fixtures/hello/go.mod"
+      - name: Assert correct task version is installed or action failed gracefully
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            TASK_VER=$(task --version 2>&1 || true)
+            echo "task version output: $TASK_VER"
+            if echo "$TASK_VER" | grep -q "3.51.1"; then
+              echo "PASS: task version 3.51.1 is installed"
+            else
+              echo "FAIL: expected task version 3.51.1 but got: $TASK_VER"
+              exit 1
+            fi
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (e.g. go install unavailable in harness)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

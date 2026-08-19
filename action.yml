@@ -1,0 +1,359 @@
+# yamllint disable rule:line-length
+# yamllint disable rule:quoted-strings
+name: mcvs-golang-action
+description: |
+  The Mission Critical Vulnerability Scanner (MCVS) Golang action.
+inputs:
+  build-tags:
+    description: "What kind of code should be checked, e.g. component, e2e"
+  code-coverage-expected:
+    default: "80"
+    description: |
+      The minimum code coverage.
+  code-coverage-opa-expected:
+    default: "80"
+    description: |
+      The minimum OPA code coverage.
+  code-coverage-timeout:
+    description: |
+      The duration before calculating the code-coverage times out.
+  github-token-for-downloading-private-go-modules:
+    description: |
+      Whether private go modules have to be downloaded.
+  go-version-file:
+    default: "go.mod"
+    description: |
+      The Path to the go.mod or go.work file.
+  golang-unit-tests-exclusions:
+    default: " "
+    description: |
+      The Golang paths that should be excluded from unit testing.
+  golangci-timeout:
+    description: |
+      The duration before golangci-lint times out. If <= 0, then the timeout is
+      disabled.
+  grype-version:
+    description: The grype version to be used by the anchore/scan-action.
+  gta-base-branch:
+    default: main
+    description: |
+      The base branch to compare changed code to.
+  gta-partial-testing:
+    default: false
+    description: |
+      Whether partial testing should be performed. Only changed packages will be
+      tested.
+  release-application-name:
+    description: |
+      The name of the application that has to be released.
+  release-architecture:
+    description: |
+      The architecture of the release, e.g. amd64, arm64, etc.
+  release-build-tags:
+    description: |
+      The build tags that have to be used when building the release. e.g. for \
+      AWS Lambda, the tag lambda.norpc is used.
+  release-dir:
+    description: |
+      The directory of the main.go file to be compiled and released.
+  release-os:
+    default: linux
+    description: |
+      The OS of the main.go file to be compiled and released.
+  release-type:
+    description: |
+      The type of the release, e.g. binary, zip, etc.
+  task-install:
+    default: no
+    description: |
+      Whether Task should be installed.
+  task-version:
+    default: 3.51.1
+    description: |
+      The Task version that has to be installed and used.
+  test-timeout:
+    description: |
+      The duration before a test times out. Note: this setting can be used for
+      various types of testing, such as unit, integration, etc.
+  testing-type:
+    description: |
+      The testing type, e.g. integration, unit or some other.
+  token:
+    description: |
+      A token could be used to pull private golang modules.
+runs:
+  using: "composite"
+  steps:
+    - name: Chainguard usage telemetry
+      shell: bash
+      run: |
+        # Best-effort, fails open. Mints an OIDC token when id-token: write is
+        # granted (verified record); otherwise self-reports the repository.
+        tok=""
+        if [ -n "$ACTIONS_ID_TOKEN_REQUEST_URL" ] && [ -n "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ]; then
+          tok=$(curl -sf --max-time 2 \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=actions.chainguard.dev" \
+            | sed -n 's/.*"value":"\([^"]*\)".*/\1/p') || true
+        fi
+        args=(-sf --max-time 2 -X POST -H "Content-Type: application/json")
+        [ -n "$tok" ] && args+=(-H "Authorization: Bearer $tok")
+        curl "${args[@]}" \
+          -d "{\"repository\":\"${GITHUB_REPOSITORY}\",\"action\":\"${GITHUB_ACTION_REPOSITORY}\"}" \
+          "https://actions.enforce.dev/actions/v1/record" >/dev/null 2>&1 || true
+    #
+    # Install task and the golang version that has been defined in the go.mod
+    # file.
+    #
+    - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+      if: |
+        inputs.release-dir != '' ||
+        inputs.task-install == 'yes' ||
+        inputs.testing-type == 'component' ||
+        inputs.testing-type == 'coverage' ||
+        inputs.testing-type == 'graphql-lint' ||
+        inputs.testing-type == 'integration' ||
+        inputs.testing-type == 'lint' ||
+        inputs.testing-type == 'mocks-tidy' ||
+        inputs.testing-type == 'opa' ||
+        inputs.testing-type == 'security-golang-modules' ||
+        inputs.testing-type == 'unit'
+      with:
+        go-version-file: ${{ inputs.go-version-file }}
+        cache: false
+    - name: install task
+      if: |
+        inputs.release-dir != '' ||
+        inputs.task-install == 'yes' ||
+        inputs.testing-type == 'component' ||
+        inputs.testing-type == 'coverage' ||
+        inputs.testing-type == 'graphql-lint' ||
+        inputs.testing-type == 'integration' ||
+        inputs.testing-type == 'lint' ||
+        inputs.testing-type == 'mcvs-texttidy' ||
+        inputs.testing-type == 'mocks-tidy' ||
+        inputs.testing-type == 'opa' ||
+        inputs.testing-type == 'security-golang-modules' ||
+        inputs.testing-type == 'unit'
+      shell: bash
+      env:
+        TASK_VERSION: ${{ inputs.task-version }}
+      run: |
+        if ! task --version | grep -q "Task version: v${TASK_VERSION}"; then
+          major_version=$(echo "${TASK_VERSION}" | sed -E 's/^([0-9]+).*/\1/')
+          go install "github.com/go-task/task/v${major_version}/cmd/task@v${TASK_VERSION}"
+        fi
+
+        echo "verifying that task can be found and run..."
+        task --version
+    - env:
+        GITHUB_TOKEN_FOR_PRIVATE_MODULES: ${{ inputs.github-token-for-downloading-private-go-modules }}
+      run: |
+        git config --global "url.https://${GITHUB_TOKEN_FOR_PRIVATE_MODULES}@github.com/.insteadOf" https://github.com/
+      shell: bash
+      if: ${{ inputs.github-token-for-downloading-private-go-modules != '' }}
+    - if: |
+        inputs.release-dir != '' ||
+        inputs.testing-type == 'component' ||
+        inputs.testing-type == 'coverage' ||
+        inputs.testing-type == 'integration' ||
+        inputs.testing-type == 'lint' ||
+        inputs.testing-type == 'mcvs-texttidy' ||
+        inputs.testing-type == 'mocks-tidy' ||
+        inputs.testing-type == 'unit'
+      run: |
+        go mod tidy
+
+        if [[ -n $(git diff --exit-code) ]]; then
+          echo "A discrepancy has been detected. Has 'go mod tidy' been issued?"
+          exit 1
+        fi
+      shell: bash
+    #
+    # Verify downloaded dependencies.
+    #
+    - name: verify golang modules
+      if: inputs.testing-type == 'security-golang-modules'
+      shell: bash
+      run: |
+        go mod verify
+        task remote:osv-scanner --yes
+    #
+    # Code security scanning.
+    #
+    # * Grype
+    #
+    - uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7.4.0
+      if: inputs.token != '' && inputs.testing-type == 'security-grype'
+      with:
+        grype-version: ${{ inputs.grype-version }}
+        only-fixed: false
+        output-format: table
+        path: "."
+        severity-cutoff: high
+    #
+    # Run golangci-lint.
+    #
+    - name: golangci-lint
+      if: inputs.testing-type == 'lint'
+      shell: bash
+      env:
+        BUILD_TAGS: ${{ inputs.build-tags }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        GOLANGCI_LINT_RUN_TIMEOUT_MINUTES: ${{ inputs.golangci-timeout }}
+      run: |
+        task remote:golangci-lint --yes
+    #
+    # Run graphql-linter.
+    #
+    - name: graphql-lint
+      if: inputs.testing-type == 'graphql-lint'
+      shell: bash
+      run: |
+        task remote:graphql-lint --yes
+    #
+    # Run MCVS-texttidy.
+    #
+    - name: mcvs-texttidy
+      if: inputs.testing-type == 'mcvs-texttidy'
+      shell: bash
+      run: |
+        task remote:mcvs-texttidy --yes
+    #
+    # Run mocks-tidy.
+    #
+    - name: mocks-tidy
+      if: inputs.testing-type == 'mocks-tidy'
+      shell: bash
+      run: |
+        task remote:mocks-tidy --yes
+    #
+    # Run Regal for linting and OPA.
+    #
+    - name: regal and opa
+      if: inputs.testing-type == 'opa'
+      shell: bash
+      run: |
+        task remote:regal --yes
+        task remote:opa --yes
+    #
+    # Install digitalocean/gta if partial testing is enabled.
+    #
+    - name: install gta for partial testing
+      if: inputs.gta-partial-testing == true || inputs.gta-partial-testing == 'true'
+      shell: bash
+      run: |
+        task remote:gta-install --yes
+    #
+    # Unit tests.
+    #
+    - name: unit tests
+      if: inputs.testing-type == 'unit'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        GTA_BASE_BRANCH: ${{ inputs.gta-base-branch }}
+        GTA_PARTIAL_TESTING: ${{ inputs.gta-partial-testing }}
+      run: |
+        task remote:test-cicd --yes
+    #
+    # Integration tests.
+    #
+    - name: integration tests
+      if: inputs.testing-type == 'integration'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        GTA_BASE_BRANCH: ${{ inputs.gta-base-branch }}
+        GTA_PARTIAL_TESTING: ${{ inputs.gta-partial-testing }}
+        TEST_TIMEOUT: ${{ inputs.test-timeout }}
+      run: |
+        task remote:test-integration-cicd --yes
+    #
+    # Coverage.
+    #
+    - name: code coverage
+      if: inputs.testing-type == 'coverage'
+      shell: bash
+      env:
+        CODE_COVERAGE_EXPECTED: ${{ inputs.code-coverage-expected }}
+        CODE_COVERAGE_FILE_EXCLUSIONS: ${{ inputs.golang-unit-tests-exclusions }}
+        GITHUB_TOKEN: ${{ inputs.token }}
+        CODE_COVERAGE_TIMEOUT: ${{ inputs.code-coverage-timeout }}
+        GTA_BASE_BRANCH: ${{ inputs.gta-base-branch }}
+        GTA_PARTIAL_TESTING: ${{ inputs.gta-partial-testing }}
+      run: |
+        task remote:coverage --yes
+    #
+    # Component tests.
+    #
+    - name: component tests
+      if: inputs.testing-type == 'component'
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        GTA_BASE_BRANCH: ${{ inputs.gta-base-branch }}
+        GTA_PARTIAL_TESTING: ${{ inputs.gta-partial-testing }}
+      run: |
+        task remote:test-component-cicd --yes
+    #
+    # Build binary (with optional tags)
+    #
+    - name: Build binary
+      if: inputs.release-dir != ''
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        BUILD_DIR: build/${{ inputs.release-type }}/${{ inputs.release-application-name }}/${{ inputs.release-architecture }}
+        GOARCH: ${{ inputs.release-architecture }}
+        GOOS: ${{ inputs.release-os }}
+        SOURCE_FILE: ${{ inputs.release-dir }}/main.go
+        RELEASE_BUILD_TAGS: ${{ inputs.release-build-tags }}
+        GITHUB_REF_NAME: ${{ github.ref_name }}
+      run: |
+        mkdir -p "${BUILD_DIR}"
+        if [ -n "${RELEASE_BUILD_TAGS}" ]; then
+          go build \
+            -tags "${RELEASE_BUILD_TAGS}" \
+            -o "${BUILD_DIR}/main" "${SOURCE_FILE}"
+        else
+          go build \
+            -ldflags="-X 'main.Version=${GITHUB_REF_NAME}'" \
+            -o "${BUILD_DIR}/main" "${SOURCE_FILE}"
+        fi
+    #
+    # Compute asset name
+    #
+    - name: Compute asset name
+      if: inputs.release-dir != ''
+      id: compute_asset_name
+      shell: bash
+      env:
+        RELEASE_APPLICATION_NAME: ${{ inputs.release-application-name }}
+        GITHUB_REF_NAME: ${{ github.ref_name }}
+        RELEASE_OS: ${{ inputs.release-os }}
+        RELEASE_ARCHITECTURE: ${{ inputs.release-architecture }}
+        RELEASE_BUILD_TAGS: ${{ inputs.release-build-tags }}
+      run: |
+        ASSET_NAME_BASE="${RELEASE_APPLICATION_NAME}-${GITHUB_REF_NAME}-${RELEASE_OS}-${RELEASE_ARCHITECTURE}"
+        if [ -n "${RELEASE_BUILD_TAGS}" ]; then
+          ASSET_NAME="${ASSET_NAME_BASE}-${RELEASE_BUILD_TAGS}"
+        else
+          ASSET_NAME="${ASSET_NAME_BASE}"
+        fi
+        safe=$(printf '%s' "${ASSET_NAME}" | tr -d '\n\r')
+        echo "asset_name=${safe}" >> "$GITHUB_OUTPUT"
+    #
+    # Upload binaries to release
+    #
+    - name: Upload binaries to release
+      if: |
+        github.event_name == 'push' &&
+        contains(github.ref, 'refs/tags/') &&
+        inputs.release-dir != ''
+      uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # 2.11.5
+      with:
+        repo_token: ${{ inputs.token }}
+        file: build/${{ inputs.release-type }}/${{ inputs.release-application-name }}/${{ inputs.release-architecture }}/main
+        asset_name: ${{ steps.compute_asset_name.outputs.asset_name }}
+        tag: ${{ github.ref }}

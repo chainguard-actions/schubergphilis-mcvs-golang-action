@@ -1,0 +1,55 @@
+name: Test build binary with release-build-tags
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_REF: refs/heads/main
+      GITHUB_EVENT_NAME: push
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - id: action
+        uses: .
+        with:
+          go-version-file: "go.mod"
+          release-dir: "tests/fixtures/myapp"
+          release-application-name: "myapp-tagged"
+          release-architecture: "amd64"
+          release-os: "linux"
+          release-type: "binary"
+          release-build-tags: "integration"
+
+      - name: Assert binary was built with build tags
+        run: |
+          BINARY_PATH="build/binary/myapp-tagged/amd64/main"
+          echo "Checking for binary at: $BINARY_PATH"
+          if [ ! -f "$BINARY_PATH" ]; then
+            echo "FAIL: binary not found at $BINARY_PATH"
+            find build/ -type f 2>/dev/null || echo "build/ directory does not exist"
+            exit 1
+          fi
+          echo "PASS: binary exists at $BINARY_PATH"
+
+      - name: Assert asset name output is set
+        env:
+          ACTUAL: ${{ steps.action.outputs.asset_name }}
+        run: |
+          echo "actual asset_name: $ACTUAL"
+          if [ -z "$ACTUAL" ]; then
+            echo "FAIL: asset_name output is empty"
+            exit 1
+          fi
+          echo "PASS: asset_name is '$ACTUAL'"
+
+      - name: Assert asset name contains build tag
+        env:
+          ACTUAL: ${{ steps.action.outputs.asset_name }}
+        run: |
+          echo "actual asset_name: $ACTUAL"
+          if [[ "$ACTUAL" != *"integration"* ]]; then
+            echo "FAIL: asset_name does not contain build tag 'integration', got: $ACTUAL"
+            exit 1
+          fi
+          echo "PASS: asset_name '$ACTUAL' contains build tag"

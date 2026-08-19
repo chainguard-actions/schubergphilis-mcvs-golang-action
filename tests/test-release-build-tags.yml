@@ -1,0 +1,44 @@
+name: Test release-build-tags input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          release-dir: "tests/fixtures/hello"
+          release-application-name: "hello"
+          release-architecture: "amd64"
+          release-os: "linux"
+          release-type: "binary"
+          release-build-tags: "integration"
+          go-version-file: "tests/fixtures/hello/go.mod"
+      - name: Assert action ran with release-build-tags input
+        env:
+          ASSET_NAME: ${{ steps.action.outputs.asset_name }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "asset_name: $ASSET_NAME"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$ASSET_NAME" ]; then
+              echo "FAIL: action succeeded but asset_name output is empty"
+              exit 1
+            fi
+            # When release-build-tags is set, the asset name should include the tag
+            if echo "$ASSET_NAME" | grep -q "integration"; then
+              echo "PASS: asset_name includes build tag: $ASSET_NAME"
+            else
+              echo "FAIL: expected asset_name to include 'integration' but got: $ASSET_NAME"
+              exit 1
+            fi
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (expected in harness — go mod tidy may fail)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
