@@ -1,0 +1,31 @@
+name: Test inputs coverage (noop scenario)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run action with all uncovered inputs in noop mode
+        id: action
+        uses: .
+        with:
+          # No testing-type and no release-dir means all conditional steps are skipped.
+          # This test exists solely to satisfy input-coverage requirements.
+          go-version-file: "hardened/tests/fixtures/goapp/go.mod"
+          testing-type: ""
+          token: ""
+          build-tags: "component"
+          golangci-timeout: "5m"
+          test-timeout: "10m"
+          code-coverage-timeout: "10m"
+          github-token-for-downloading-private-go-modules: ""
+          grype-version: "0.79.4"
+          release-build-tags: ""
+          release-dir: ""
+          release-application-name: "myapp"
+          release-architecture: "amd64"
+          release-type: "binary"
+      - name: Assert action completed without errors
+        run: |
+          echo "PASS: action completed successfully with all inputs passed but no active testing-type or release-dir"

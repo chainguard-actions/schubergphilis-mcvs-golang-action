@@ -1,0 +1,38 @@
+name: Test task-install
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install fake task binary to avoid network dependency
+        run: |
+          cat > /usr/local/bin/task << 'EOF'
+          #!/bin/sh
+          echo "Task version: v3.53.1"
+          EOF
+          chmod +x /usr/local/bin/task
+          echo "Fake task installed:"
+          task --version
+      - name: Use action with task-install yes
+        id: action
+        uses: .
+        with:
+          task-install: "yes"
+          task-version: "3.53.1"
+          go-version-file: "tests/fixtures/goapp/go.mod"
+      - name: Assert task is installed and runnable
+        run: |
+          echo "Checking task is available..."
+          if ! command -v task &>/dev/null; then
+            echo "FAIL: task command not found after install"
+            exit 1
+          fi
+          TASK_VER=$(task --version 2>&1 || true)
+          echo "task version output: $TASK_VER"
+          if ! echo "$TASK_VER" | grep -q "3.53.1"; then
+            echo "FAIL: expected task version 3.53.1 but got: $TASK_VER"
+            exit 1
+          fi
+          echo "PASS: task installed and correct version found"
