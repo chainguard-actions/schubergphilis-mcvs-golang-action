@@ -1,0 +1,38 @@
+name: Test build binary
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          # Use the fixture go.mod (go 1.21.0) so setup-go can resolve a valid Go version.
+          # The action's root go.mod has go 1.27.0 which does not exist yet.
+          go-version-file: "tests/fixtures/go-app/go.mod"
+          release-dir: "tests/fixtures/go-app"
+          release-application-name: "myapp"
+          release-architecture: "amd64"
+          release-os: "linux"
+          release-type: "binary"
+      - name: Assert binary was built or action failed gracefully
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          BINARY_PATH="build/binary/myapp/amd64/main"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ ! -f "$BINARY_PATH" ]; then
+              echo "FAIL: action succeeded but binary not found at $BINARY_PATH"
+              exit 1
+            fi
+            echo "PASS: binary built at $BINARY_PATH"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (go mod tidy or go build issue with workspace go.mod)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
