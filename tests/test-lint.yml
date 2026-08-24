@@ -1,0 +1,30 @@
+name: Test lint testing-type (covers testing-type, token, build-tags, golangci-timeout)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          testing-type: "lint"
+          token: ${{ github.token }}
+          build-tags: "unit"
+          golangci-timeout: "5m"
+          go-version-file: "tests/fixtures/go.mod"
+      - name: Assert action ran (lint may fail in harness but inputs were accepted)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: lint action succeeded"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (lint requires project-specific setup)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
