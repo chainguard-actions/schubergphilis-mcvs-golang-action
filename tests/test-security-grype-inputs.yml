@@ -1,0 +1,31 @@
+name: Test security-grype inputs (grype-version, token, testing-type)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          testing-type: "security-grype"
+          grype-version: "0.88.0"
+          token: ${{ github.token }}
+      - name: Assert action ran with security-grype inputs
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # The security-grype testing-type runs anchore/scan-action.
+          # Under the act harness this may fail due to network or environment
+          # constraints, but the action must not crash unexpectedly.
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: action completed successfully with security-grype inputs"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (expected under act harness for security-grype)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

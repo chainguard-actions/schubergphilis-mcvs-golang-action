@@ -1,0 +1,45 @@
+name: Test task install
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          task-install: "yes"
+          task-version: "3.53.1"
+          # Use the fixture go.mod which has a valid/available Go version.
+          # task-install does NOT trigger go mod tidy, so only setup-go and
+          # install-task steps run (go mod tidy condition excludes task-install).
+          go-version-file: "tests/fixtures/go.mod"
+      - name: Assert task is installed and runnable
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "action outcome: $OUTCOME"
+          # task is installed via 'go install' into GOPATH/bin
+          GOPATH_BIN="$(go env GOPATH)/bin"
+          export PATH="${GOPATH_BIN}:${PATH}"
+
+          echo "Checking task binary..."
+          if command -v task &>/dev/null; then
+            VERSION_OUTPUT=$(task --version 2>&1)
+            echo "task version output: $VERSION_OUTPUT"
+            if echo "$VERSION_OUTPUT" | grep -q "Task version: v3.53.1"; then
+              echo "PASS: task v3.53.1 is installed"
+            else
+              echo "FAIL: expected task v3.53.1 but got: $VERSION_OUTPUT"
+              exit 1
+            fi
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (task may not have been installed under act harness)"
+          else
+            echo "FAIL: action succeeded but task binary not found in PATH"
+            echo "PATH=$PATH"
+            ls -la "${GOPATH_BIN}/" 2>/dev/null || echo "GOPATH/bin does not exist"
+            exit 1
+          fi

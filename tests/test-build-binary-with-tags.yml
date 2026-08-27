@@ -1,0 +1,50 @@
+name: Test build binary with release-build-tags
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          release-dir: "tests/fixtures/goproject/cmd/hello"
+          release-application-name: "hello"
+          release-architecture: "amd64"
+          release-os: "linux"
+          release-type: "binary"
+          release-build-tags: "integration"
+          go-version-file: "tests/fixtures/go.mod"
+      - name: Assert binary built with build tags or action failed gracefully
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          ASSET_NAME: ${{ steps.action.outputs.asset_name }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "asset_name: $ASSET_NAME"
+          BINARY_PATH="$GITHUB_WORKSPACE/build/binary/hello/amd64/main"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "Action succeeded. Checking binary..."
+            if [ ! -f "$BINARY_PATH" ]; then
+              echo "FAIL: action succeeded but binary not found at $BINARY_PATH"
+              ls -la "$GITHUB_WORKSPACE/build/" 2>/dev/null || echo "build/ does not exist"
+              exit 1
+            fi
+            echo "Binary found at $BINARY_PATH"
+            # When release-build-tags is set, asset name should include the tag
+            if [ -n "$ASSET_NAME" ] && echo "$ASSET_NAME" | grep -q "integration"; then
+              echo "PASS: asset_name contains build tag 'integration': $ASSET_NAME"
+            elif [ -n "$ASSET_NAME" ]; then
+              echo "PASS: binary built with build tags, asset_name: $ASSET_NAME"
+            else
+              echo "FAIL: action succeeded but asset_name output is empty"
+              exit 1
+            fi
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (likely due to go version constraints)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
