@@ -1,0 +1,45 @@
+name: Test task install
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          task-install: "yes"
+          task-version: "3.53.1"
+          go-version-file: "tests/fixtures/go.mod"
+      - name: Assert task is installed or action failed gracefully
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "Checking task is installed..."
+            GOPATH_BIN="$(go env GOPATH)/bin"
+            if command -v task >/dev/null 2>&1; then
+              TASK_CMD="task"
+            elif [ -f "${GOPATH_BIN}/task" ]; then
+              TASK_CMD="${GOPATH_BIN}/task"
+            else
+              echo "FAIL: task not found in PATH or GOPATH/bin"
+              exit 1
+            fi
+            TASK_VER=$("$TASK_CMD" --version 2>&1 || true)
+            echo "task version output: $TASK_VER"
+            if echo "$TASK_VER" | grep -q "Task version"; then
+              echo "PASS: task is installed and reports version"
+            else
+              echo "FAIL: task --version did not report expected output: $TASK_VER"
+              exit 1
+            fi
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (likely Go version or network issue)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

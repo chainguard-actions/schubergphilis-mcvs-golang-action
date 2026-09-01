@@ -1,0 +1,14 @@
+name: Test no-op (no testing-type set)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        # No testing-type, no release-dir, no task-install — all steps are skipped
+      - name: Assert action completed without error
+        run: |
+          echo "PASS: action completed with no testing-type set (all steps skipped)"
