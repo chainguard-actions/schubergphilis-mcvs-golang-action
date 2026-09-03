@@ -1,0 +1,31 @@
+name: Test task install
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          task-install: "yes"
+          # Use the root go.mod (go 1.20) for setup-go.
+          # The action/go.mod specifies go 1.27.1 which does not exist.
+          go-version-file: "go.mod"
+          # Use a specific task version known to exist.
+          task-version: "3.35.1"
+      - name: Assert task is installed and runnable
+        run: |
+          echo "Checking that task binary is available..."
+          if ! command -v task &>/dev/null; then
+            echo "FAIL: task binary not found in PATH"
+            exit 1
+          fi
+          TASK_VER=$(task --version 2>&1 || true)
+          echo "task version output: $TASK_VER"
+          if ! echo "$TASK_VER" | grep -q "Task version:"; then
+            echo "FAIL: task --version did not return expected output"
+            exit 1
+          fi
+          echo "PASS: task is installed"

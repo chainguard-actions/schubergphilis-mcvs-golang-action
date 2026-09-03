@@ -1,0 +1,53 @@
+name: Test build binary
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          # Use the root go.mod (go 1.20) for setup-go.
+          # go 1.20 does not add a toolchain directive during go mod tidy,
+          # so git diff will show no changes after go mod tidy runs.
+          go-version-file: "go.mod"
+          # Use the simpleapp fixture (no separate go.mod) as the release source.
+          # The action builds SOURCE_FILE = release-dir/main.go.
+          release-dir: "tests/fixtures/simpleapp"
+          release-application-name: "testapp"
+          release-architecture: "amd64"
+          release-os: "linux"
+          release-type: "binary"
+      - name: Assert binary was built
+        run: |
+          BINARY_PATH="$GITHUB_WORKSPACE/build/binary/testapp/amd64/main"
+          echo "Checking for binary at: $BINARY_PATH"
+          if [ ! -f "$BINARY_PATH" ]; then
+            echo "FAIL: binary not found at $BINARY_PATH"
+            ls -la "$GITHUB_WORKSPACE/build/" 2>/dev/null || echo "build/ directory does not exist"
+            exit 1
+          fi
+          echo "Binary found. Checking it is executable..."
+          if [ ! -x "$BINARY_PATH" ]; then
+            echo "FAIL: binary is not executable"
+            exit 1
+          fi
+          echo "PASS: binary built successfully"
+      - name: Assert compute_asset_name output is set
+        env:
+          ASSET_NAME: ${{ steps.action.outputs.asset_name }}
+        run: |
+          echo "asset_name: $ASSET_NAME"
+          # The asset name is: release-application-name + github.ref_name + release-os + release-architecture
+          # Under act, github.ref_name will be 'act-harness'
+          if [ -z "$ASSET_NAME" ]; then
+            echo "FAIL: asset_name output is empty"
+            exit 1
+          fi
+          if ! echo "$ASSET_NAME" | grep -q "testapp"; then
+            echo "FAIL: asset_name does not contain 'testapp': $ASSET_NAME"
+            exit 1
+          fi
+          echo "PASS: asset_name is '$ASSET_NAME'"

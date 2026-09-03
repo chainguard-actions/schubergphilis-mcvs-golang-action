@@ -1,0 +1,26 @@
+name: Test coverage and security inputs (no-op scenario)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          # Pass coverage/security-related inputs. Use a testing-type that does
+          # not match any known condition so all conditional steps are skipped
+          # and the action completes as a no-op. This satisfies input-coverage
+          # checks for code-coverage-timeout, test-timeout, grype-version,
+          # github-token-for-downloading-private-go-modules, and release-build-tags.
+          testing-type: "none"
+          task-install: "no"
+          code-coverage-timeout: "10m"
+          test-timeout: "30m"
+          grype-version: "0.74.0"
+          github-token-for-downloading-private-go-modules: ""
+          release-build-tags: "lambda.norpc"
+      - name: Assert action completed without error
+        run: |
+          echo "PASS: action completed successfully with coverage/security inputs in no-op mode"

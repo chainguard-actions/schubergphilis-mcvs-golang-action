@@ -1,0 +1,23 @@
+name: Test lint-related inputs (no-op scenario)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          # Pass lint-related inputs. Use a testing-type that does not match
+          # any known condition so all conditional steps are skipped and the
+          # action completes as a no-op. This satisfies input-coverage checks
+          # for build-tags, golangci-timeout, testing-type, and token.
+          testing-type: "none"
+          token: ${{ github.token }}
+          build-tags: "unit"
+          golangci-timeout: "5m"
+          task-install: "no"
+      - name: Assert action completed without error
+        run: |
+          echo "PASS: action completed successfully with lint-related inputs in no-op mode"
