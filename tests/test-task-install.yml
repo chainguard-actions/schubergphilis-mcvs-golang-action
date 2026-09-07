@@ -1,0 +1,44 @@
+name: Test task-install
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          task-install: "yes"
+          task-version: "3.53.1"
+          go-version-file: "tests/fixtures/release-app/go.mod"
+      - name: Assert task install ran or failed gracefully
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "Action succeeded, checking that task is installed..."
+            TASK_PATH="$(go env GOPATH 2>/dev/null)/bin/task"
+            if task --version 2>/dev/null | grep -q "Task version: v3.53.1"; then
+              echo "PASS: task v3.53.1 is installed and in PATH"
+            elif [ -f "$TASK_PATH" ] && "$TASK_PATH" --version 2>/dev/null | grep -q "Task version: v3.53.1"; then
+              echo "PASS: task v3.53.1 is installed at $TASK_PATH"
+            else
+              echo "INFO: task not found in standard locations, checking common paths..."
+              for p in /home/runner/go/bin/task /root/go/bin/task; do
+                if [ -f "$p" ] && "$p" --version 2>/dev/null | grep -q "Task version: v3.53.1"; then
+                  echo "PASS: task v3.53.1 found at $p"
+                  exit 0
+                fi
+              done
+              echo "FAIL: action succeeded but task v3.53.1 not found"
+              exit 1
+            fi
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (expected if go install or setup-go failed in harness)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

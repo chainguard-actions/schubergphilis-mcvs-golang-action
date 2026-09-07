@@ -1,0 +1,870 @@
+# task remote:lint
+# - cmd: steps that will be run sequentially.
+# - deps: tasks that will be run in parallel.
+#
+# yamllint disable rule:line-length
+# yamllint disable rule:quoted-strings
+---
+version: 3
+vars:
+  # Variables that have to be defined first as they are used in other variables.
+  CODE_COVERAGE_EXPECTED:
+    sh: |
+      if [ -z "${CODE_COVERAGE_EXPECTED}" ]; then
+        yq '.jobs.mcvs-golang-action.steps[] | select(.uses | test(".*mcvs-golang-action.*")) | .with.code-coverage-expected' .github/workflows/golang.yml
+        exit 0
+      fi
+      echo ${CODE_COVERAGE_EXPECTED}
+  CODE_COVERAGE_FILE_EXCLUSIONS:
+    sh: |
+      if [ -z "${CODE_COVERAGE_FILE_EXCLUSIONS}" ]; then
+        yq '.jobs.mcvs-golang-action.steps[] | select(.uses | test(".*mcvs-golang-action.*")) | .with.golang-unit-tests-exclusions' .github/workflows/golang.yml
+        exit 0
+      fi
+      echo ${CODE_COVERAGE_FILE_EXCLUSIONS}
+  OPA_CODE_COVERAGE_EXPECTED:
+    sh: |
+      if [ -z "${OPA_CODE_COVERAGE_EXPECTED}" ]; then
+        yq '.jobs.mcvs-golang-action.steps[] | select(.uses | test(".*mcvs-golang-action.*")) | .with.code-coverage-opa-expected' .github/workflows/golang.yml
+        exit 0
+      fi
+      echo ${OPA_CODE_COVERAGE_EXPECTED}
+  GOBIN:
+    sh: |
+      if [ -z "${GOBIN}" ]; then
+        if [ -n "${GITHUB_ACTIONS}" ]; then
+          echo /home/runner/go/bin
+          exit 0
+        fi
+        echo "GOBIN has not been not set. Ensure that it has been set on the system."
+        exit 1
+      fi
+      # Ensure that GOBIN is set in the context of this Taskfile.
+      echo ${GOBIN}
+  OS_TYPE_MAC: Darwin
+  # Variables that are sorted alphabetically and are used in the tasks.
+  BUILD_TAGS: '{{ .BUILD_TAGS | default "component,e2e,integration" }}'
+  CODE_COVERAGE_STRICT: '{{.CODE_COVERAGE_STRICT | default "true"}}'
+  CODE_COVERAGE_TIMEOUT: '{{.CODE_COVERAGE_TIMEOUT | default "4m0s"}}'
+  COVERPROFILE: profile.cov
+  COVERPROFILE_UNIQUE: "unique_{{.COVERPROFILE}}"
+  GOLANGCI_LINT_CONFIG_PATH: '{{.GOLANGCI_LINT_CONFIG_PATH | default ".golangci.yml"}}'
+  GOLANGCI_LINT_VERSION: v2.13.2
+  GOLANGCI_LINT_VERSION_WITHOUT_V_PREFIX: # the version found by the package-version-updater contains a 'v' prefix
+    sh: echo {{.GOLANGCI_LINT_VERSION}} | sed -e "s|v||"
+  GOLANGCI_LINT_RUN_TIMEOUT_MINUTES: "{{.GOLANGCI_LINT_RUN_TIMEOUT_MINUTES | default 3}}"
+  GOLANG_PARALLEL_TESTS:
+    sh: |
+      if [ "$(uname -s)" = "{{.OS_TYPE_MAC}}" ]; then
+        sysctl -n hw.ncpu
+      else
+        nproc
+      fi
+  GOLINES_BIN: "{{.GOBIN}}/golines"
+  GOLINES_VERSION: v0.13.0
+  GOTESTSUM_BIN: "{{.GOBIN}}/gotestsum"
+  GOTESTSUM_ENABLED: '{{.GOTESTSUM_ENABLED | default "true"}}'
+  GOTESTSUM_FORMAT: '{{.GOTESTSUM_FORMAT | default "testname"}}'
+  GOTESTSUM_VERSION: v1.13.0
+  GO_SWAGGER: "{{.GOBIN}}/swagger"
+  GO_SWAGGER_VERSION: v0.36.5
+  OSV_SCANNER_VERSION: v2.5.1
+  OSV_SCANNER_VERSION_WITHOUT_V_PREFIX: # the version found by the package-version-updater contains a 'v' prefix
+    sh: echo {{.OSV_SCANNER_VERSION}} | sed -e "s|v||"
+  OSV_SCANNER_BIN: "{{.GOBIN}}/osv-scanner"
+  OSV_SCANNER_CALL_ANALYSIS: '{{.OSV_SCANNER_CALL_ANALYSIS | default "false"}}'
+  # govulncheck based Go call analysis type checks the whole build graph and can
+  # consume more than 8GB, causing the scan to be OOM killed (exit code 137).
+  OSV_SCANNER_CALL_ANALYSIS_FLAG: '{{if eq .OSV_SCANNER_CALL_ANALYSIS "true"}}--call-analysis=go{{else}}--no-call-analysis=go{{end}}'
+  OSV_SCANNER_OUTPUT: /tmp/osv-scanner.txt
+  GQLGEN_VERSION: v0.17.95
+  GQLGEN_BIN: "{{.GOBIN}}/gqlgen"
+  GQLGENC_VERSION: v0.39.0
+  GQLGENC_BIN: "{{.GOBIN}}/gqlgenc"
+  GRAPHQL_LINTER_BIN: "{{.GOBIN}}/graphql-linter"
+  GRAPHQL_LINTER_VERSION: v0.2.2
+  GTA_BASE_BRANCH: '{{.GTA_BASE_BRANCH | default "main"}}'
+  GTA_PARTIAL_TESTING: '{{.GTA_PARTIAL_TESTING | default "false"}}'
+  GTA_VERSION: v0.2.0
+  HELM_VERSION: v3.16.2
+  MCVS_TEXTTIDY_BIN: "{{.GOBIN}}/mcvs-texttidy"
+  MCVS_TEXTTIDY_VERSION: 0.1.0
+  MOCKERY_BIN: "{{.GOBIN}}/mockery"
+  MOCKERY_VERSION: v3.7.4
+  OPA_BIN: "{{.GOBIN}}/opa"
+  OPA_FMT: "{{.OPA_BIN}} fmt ."
+  OPA_VERSION: v1.20.2
+  OPA_VERSION_WITHOUT_V_PREFIX: # the version found by the package-version-updater contains a 'v' prefix
+    sh: echo {{.OPA_VERSION}} | sed -e "s|v||"
+  OS_COMMAND: uname
+  OS_COMMAND_TYPE:
+    sh: "{{.OS_COMMAND}} -s"
+  OS_COMMAND_TYPE_ARCHITECTURE:
+    sh: "{{.OS_COMMAND}} -m"
+  PRESENT_BIN: "{{.GOBIN}}/present"
+  PRESENT_VERSION: v0.49.0
+  PRESENT_PRESENTATIONS_HOME: '{{.PRESENT_PRESENTATIONS_HOME | default "./docs/presentations"}}'
+  REGAL_BIN: "{{.GOBIN}}/regal"
+  REGAL_VERSION: v0.42.0
+  REGAL_VERSION_WITHOUT_V_PREFIX: # the version found by the package-version-updater contains a 'v' prefix
+    sh: echo {{.REGAL_VERSION}} | sed -e "s|v||"
+  SED_INSERT_ADDITION:
+    sh: |
+      if [ "{{.OS_COMMAND_TYPE}}" = "{{.OS_TYPE_MAC}}" ]; then
+        echo "\"\""
+      fi
+  TEST_TIMEOUT: '{{.TEST_TIMEOUT | default "4m0s"}}'
+  WSL_BIN: "{{.GOBIN}}/wsl"
+  WSL_VERSION: v5.9.0
+  YQ_VERSION: v4.53.6
+tasks:
+  build-golang-download-modules:
+    cmds:
+      - |
+        go mod tidy
+    desc: download go modules
+    silent: true
+  check-docker-networks:
+    cmds:
+      - |
+        get_docker_network_count() {
+          docker network ls --format "table {{.ID}}\t{{.Name}}\t{{.Driver}}\t{{.Scope}}" | tail -n +2 | wc -l
+        }
+
+        if [ "{{.CHECK_TYPE}}" = "before" ]; then
+          echo "Checking Docker networks before test..."
+          networks_count=$(get_docker_network_count)
+          echo "Docker networks before: ${networks_count}"
+          echo "${networks_count}" > /tmp/docker_networks_before
+        fi
+
+        if [ "{{.CHECK_TYPE}}" = "after" ]; then
+          echo "Checking Docker networks after test..."
+          networks_after=$(get_docker_network_count)
+          networks_before=$(cat /tmp/docker_networks_before 2>/dev/null || echo "0")
+          echo "Docker networks after: ${networks_after}"
+
+          # Check for both high network count and orphaned networks
+          show_warning=false
+          warning_messages=""
+
+          if [ "${networks_after}" -gt "4" ]; then
+            show_warning=true
+            warning_messages="${warning_messages}# Found ${networks_after} Docker networks, which exceeds the"$'\n'
+            warning_messages="${warning_messages}# default of three networks: bridge, host and none."$'\n'
+            warning_messages="${warning_messages}#"$'\n'
+          fi
+
+          if [ "${networks_after}" -gt "${networks_before}" ]; then
+            show_warning=true
+            if [ -n "${warning_messages}" ]; then
+              warning_messages="${warning_messages}# Additionally, found $((networks_after - networks_before)) orphaned Docker"$'\n'
+            else
+              warning_messages="${warning_messages}# Found $((networks_after - networks_before)) orphaned Docker"$'\n'
+            fi
+            warning_messages="${warning_messages}# networks."$'\n'
+            warning_messages="${warning_messages}#"$'\n'
+            warning_messages="${warning_messages}# Note: Orphaned networks were not removed automatically."$'\n'
+            warning_messages="${warning_messages}# Please check whether they are cleaned by the component"$'\n'
+            warning_messages="${warning_messages}# and/or integration tests."$'\n'
+            warning_messages="${warning_messages}#"$'\n'
+          fi
+
+          if [ "${show_warning}" = "true" ]; then
+            echo
+            echo "###############################################################"
+            echo "#"
+            echo "# WARNING"
+            echo "#"
+            echo "###############################################################"
+            echo "#"
+            echo -e "${warning_messages}"
+            echo "# Current Docker networks:"
+            echo "# $(docker network ls)"
+            echo "#"
+            if [ "${networks_after}" -gt "4" ] && [ "${networks_after}" -le "${networks_before}" ]; then
+              echo "# Please check whether the component and/or integration"
+              echo "# tests clean up unused Docker networks."
+              echo "#"
+            fi
+            echo "###############################################################"
+
+            sleep 5 # to ensure that user will see the message
+          fi
+        fi
+    internal: true
+    silent: true
+  coverage:
+    cmds:
+      - task: test
+        vars:
+          TEST_EXTRA_ARGS: >-
+            -coverpkg=$(go list --tags={{.TEST_TAGS}} ./... | grep -v '{{.CODE_COVERAGE_FILE_EXCLUSIONS}}' | tr '\n' ',' | sed 's/,$//') -coverprofile={{.COVERPROFILE}} -count=1
+          TEST_TAGS: integration
+          TEST_TIMEOUT: "{{.CODE_COVERAGE_TIMEOUT}}"
+      - |
+        local_dir_name="$(basename "$PWD")"
+
+        awk '!seen[$0]++' {{.COVERPROFILE}} > {{.COVERPROFILE_UNIQUE}}
+        code_coverage_output=$(go tool cover -func {{.COVERPROFILE_UNIQUE}})
+        code_coverage_actual=$(echo "${code_coverage_output}" | awk '/total:/ {print $3}' | sed 's/%//')
+
+        echo "CODE_COVERAGE_FILE_EXCLUSIONS: {{.CODE_COVERAGE_FILE_EXCLUSIONS}}"
+        echo "Code coverage overview:"
+        echo "${code_coverage_output}" | cut -d'/' -f4-
+
+        echo "CODE_COVERAGE_STRICT: {{.CODE_COVERAGE_STRICT}}"
+
+        if (( $(echo "${code_coverage_actual} < {{.CODE_COVERAGE_EXPECTED}}" | bc -l) )); then
+          echo "The actual code coverage: '${code_coverage_actual}' is too low. Expected: '{{.CODE_COVERAGE_EXPECTED}}'. Resolve the issue by writing more unit and/or integration tests."
+          exit 1
+        elif [ "{{.CODE_COVERAGE_STRICT}}" = "true" ] && (( $(echo "${code_coverage_actual} > {{.CODE_COVERAGE_EXPECTED}}" | bc -l) )); then
+          echo "The actual code coverage: '${code_coverage_actual}' exceeds the expected coverage. Please adjust the threshold that is defined in the .github/workflows/golang.yml workflow from '{{.CODE_COVERAGE_EXPECTED}}' to '${code_coverage_actual}'."
+          exit 1
+        fi
+    desc: check code coverage
+    silent: true
+  coverage-visual:
+    cmds:
+      - task: coverage
+      - |
+        go tool cover \
+          -html={{.COVERPROFILE_UNIQUE}} \
+          -o coverage.html
+        open ./coverage.html
+    desc: show code coverage
+    silent: true
+  format:
+    cmds:
+      - task: golangci-lint-install
+      - task: golangci-lint-fmt
+      - go mod tidy
+    desc: format go files
+    silent: true
+  fix-linting-issues:
+    cmds:
+      - task: golines-install
+      - task: wsl-install
+      - |
+        {{.GOLINES_BIN}} . -w
+        {{.WSL_BIN}} -fix ./...
+    desc: automatically fix linting issues using golines and wsl
+    silent: true
+  helm-install:
+    cmds:
+      - task: keep-local-and-remote-versions-in-sync
+      - |
+        if ! helm version | grep -q "{{.HELM_VERSION}}"; then
+          echo "Installing Helm version {{.HELM_VERSION}}..."
+          curl \
+            -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 |\
+            bash -s -- --version {{.HELM_VERSION}}
+        fi
+    silent: true
+  golang-log:
+    cmds:
+      - |
+        echo "GOBIN: {{.GOBIN}}"
+        echo "GOLANG_PARALLEL_TESTS: {{.GOLANG_PARALLEL_TESTS}}"
+  golangci-lint-config-verify:
+    cmds:
+      - golangci-lint config path
+      - golangci-lint config verify
+    silent: true
+  golangci-lint-install:
+    cmds:
+      - task: keep-local-and-remote-versions-in-sync
+      - |
+        if ! golangci-lint --version | grep -q "has version {{.GOLANGCI_LINT_VERSION_WITHOUT_V_PREFIX}}"; then
+          echo "Installing golangci-lint version {{.GOLANGCI_LINT_VERSION_WITHOUT_V_PREFIX}}..."
+          curl \
+            -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/main/install.sh |\
+            sh -s -- -b {{.GOBIN}} {{.GOLANGCI_LINT_VERSION}}
+        fi
+    silent: true
+  golangci-lint-fmt:
+    cmds:
+      - |
+        golangci-lint fmt \
+          --verbose
+  golangci-lint-run:
+    cmds:
+      - task: golang-log
+      - |
+        golangci-lint run \
+          --build-tags {{.BUILD_TAGS}} \
+          --concurrency {{.GOLANG_PARALLEL_TESTS}} \
+          --config {{.GOLANGCI_LINT_CONFIG_PATH}} \
+          --timeout {{.GOLANGCI_LINT_RUN_TIMEOUT_MINUTES}}m \
+          --verbose \
+          {{.EXTRA_ARGS}}
+    silent: true
+  golangci-lint-run-output-json:
+    cmds:
+      - task: golangci-lint-run
+        vars:
+          EXTRA_ARGS: >-
+            --output.json.path stdout
+    silent: true
+  golangci-lint:
+    cmds:
+      - task: golangci-lint-install
+      - task: golangci-lint-fmt
+      - task: golangci-lint-run
+    desc: run golangci-lint
+    silent: true
+  golangci-lint-output-json:
+    cmds:
+      - task: golangci-lint-install
+      - task: golangci-lint-fmt
+      - task: golangci-lint-run-output-json
+    desc: run golangci-lint with JSON output
+    silent: true
+  golangci-lint-run-without-cache:
+    cmds:
+      - task: golangci-lint-install
+      - golangci-lint cache clean
+      - task: golangci-lint-run
+    desc: run golangci-lint without cache
+  golines-install:
+    cmds:
+      - task: keep-local-and-remote-versions-in-sync
+      - |
+        if ! command -v {{.GOLINES_BIN}} >/dev/null 2>&1 || \
+           ! {{.GOLINES_BIN}} --version | grep -q {{.GOLINES_VERSION}}; then
+          echo "Installing golines version {{.GOLINES_VERSION}}..."
+          go install github.com/segmentio/golines@{{.GOLINES_VERSION}}
+        fi
+    silent: true
+  go-swagger-install:
+    cmds:
+      - |
+        if ! {{.GO_SWAGGER}} version | grep -q "{{.GO_SWAGGER_VERSION}}"; then
+          echo "Installing go-swagger version {{.GO_SWAGGER_VERSION}}..."
+          go install github.com/go-swagger/go-swagger/cmd/swagger@{{.GO_SWAGGER_VERSION}}
+        fi
+    silent: true
+  gotestsum-install:
+    cmds:
+      - |
+        if [ "{{.GOTESTSUM_ENABLED}}" != "true" ]; then
+          exit 0
+        fi
+        if ! {{.GOTESTSUM_BIN}} --version 2>/dev/null | grep -q "{{.GOTESTSUM_VERSION}}"; then
+          echo "Installing gotestsum version {{.GOTESTSUM_VERSION}}..."
+          go install gotest.tools/gotestsum@{{.GOTESTSUM_VERSION}}
+        fi
+    silent: true
+  gta-install:
+    cmds:
+      - |
+        if ! gta version | grep -q "{{.GTA_VERSION}}"; then
+          echo "Installing gta version {{.GTA_VERSION}}..."
+          go install github.com/digitalocean/gta/cmd/gta@{{.GTA_VERSION}}
+        fi
+    silent: true
+  osv-scanner-install:
+    cmds:
+      - |
+        osv_scanner_version=$(echo "{{.OSV_SCANNER_VERSION}}" | cut -d '.' -f 1)
+        if ! {{.OSV_SCANNER_BIN}} --version 2>/dev/null | grep -q "{{.OSV_SCANNER_VERSION_WITHOUT_V_PREFIX}}"; then
+          echo "Installing osv-scanner version {{.OSV_SCANNER_VERSION}}..."
+          go install github.com/google/osv-scanner/${osv_scanner_version}/cmd/osv-scanner@{{.OSV_SCANNER_VERSION}}
+        fi
+    silent: true
+  osv-scanner:
+    cmds:
+      - task: osv-scanner-install
+      - |
+        echo "Running osv-scanner scan..."
+        # Run osv-scanner and capture output, allow it to fail
+        {{.OSV_SCANNER_BIN}} \
+          {{.OSV_SCANNER_CALL_ANALYSIS_FLAG}} \
+          --lockfile go.mod \
+          > {{.OSV_SCANNER_OUTPUT}} 2>&1 || scan_exit_code=$?
+
+        # Check if scan found vulnerabilities (exit code 1) or had an error (exit code 128)
+        if [ -z "${scan_exit_code}" ]; then
+          echo "No vulnerabilities found."
+          exit 0
+        fi
+
+        if [ "${scan_exit_code}" -ne 1 ]; then
+          echo "osv-scanner encountered an error (exit code: ${scan_exit_code})"
+          cat {{.OSV_SCANNER_OUTPUT}}
+          exit "${scan_exit_code}"
+        fi
+
+        # Vulnerabilities found, check if they are in the ignore list
+        echo "Vulnerabilities detected. Checking against ignore list..."
+
+        # Check if osv-scanner.toml exists for ignoring vulnerabilities
+        if [ -f "osv-scanner.toml" ]; then
+          echo "Found osv-scanner.toml configuration file."
+          echo "Re-running scan with ignore configuration..."
+          {{.OSV_SCANNER_BIN}} \
+            {{.OSV_SCANNER_CALL_ANALYSIS_FLAG}} \
+            --config osv-scanner.toml \
+            --lockfile go.mod \
+            > {{.OSV_SCANNER_OUTPUT}} 2>&1 || final_exit_code=$?
+
+          if [ -z "${final_exit_code}" ]; then
+            echo "All vulnerabilities are in the ignore list."
+            exit 0
+          elif [ "${final_exit_code}" -eq 1 ]; then
+            echo "Vulnerabilities found that are not in the ignore list:"
+            cat {{.OSV_SCANNER_OUTPUT}}
+            exit 1
+          else
+            echo "osv-scanner encountered an error (exit code: ${final_exit_code})"
+            cat {{.OSV_SCANNER_OUTPUT}}
+            exit "${final_exit_code}"
+          fi
+        else
+          echo "No osv-scanner.toml found. All vulnerabilities will cause failure."
+          cat {{.OSV_SCANNER_OUTPUT}}
+          exit 1
+        fi
+    desc: check for vulnerabilities with osv-scanner
+    silent: true
+  gqlgen-install:
+    cmds:
+      - |
+        if ! {{.GQLGEN_BIN}} version | grep -q {{.GQLGEN_VERSION}}; then
+          echo "Installing gqlgen version {{.GQLGEN_VERSION}}..."
+          go install github.com/99designs/gqlgen@{{.GQLGEN_VERSION}}
+        fi
+    silent: true
+  gqlgen:
+    cmds:
+      - task: gqlgen-install
+      - find {{.GQLGEN_DIR | default "."}} -name gqlgen.yml -exec echo {} ';' -execdir {{.GQLGEN_BIN}} ';'
+    desc: find gqlgen.yml files and generate graphql servers based on these schemas
+    silent: true
+  gqlgenc-install:
+    cmds:
+      - task: keep-local-and-remote-versions-in-sync
+      - |
+        if ! {{.GQLGENC_BIN}} version | grep -q {{.GQLGENC_VERSION}}; then
+          echo "Installing gqlgenc version {{.GQLGENC_VERSION}}..."
+          go install github.com/Yamashou/gqlgenc@{{.GQLGENC_VERSION}}
+        fi
+  graphql-linter-install:
+    cmds:
+      - |
+        if ! {{.GRAPHQL_LINTER_BIN}} --version | grep -q {{.GRAPHQL_LINTER_VERSION}}; then
+          echo "Installing graphql-linter version {{.GRAPHQL_LINTER_VERSION}}..."
+          go install github.com/schubergphilis/graphql-linter/cmd/graphql-linter@{{.GRAPHQL_LINTER_VERSION}}
+        fi
+    silent: true
+  graphql-lint:
+    cmds:
+      - task: graphql-linter-install
+      - |
+        {{.GRAPHQL_LINTER_BIN}}
+    silent: true
+  keep-local-task-up-to-date-with-version-defined-in-action:
+    cmds:
+      - task: yq-install
+      - |
+        if [ -f Taskfile.yml ]; then
+          expected_task_version=$(curl -s {{.REMOTE_URL}}/{{.REMOTE_URL_REPO}}/{{.REMOTE_URL_REF}}/action.yml | yq '.inputs.task-version.default')
+          expected_task_major_version=$(echo "${expected_task_version}" | sed -E 's/^([0-9]+).*/\1/')
+
+          current_task_version=$(task --version | sed -E 's/.*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          if [ -z "${expected_task_version}" ] || [ -z "${current_task_version}" ]; then
+            echo "Failed to extract the expected (default) or current version or both for Task. Please check the default task-version input parameter in the .github/workflows/golang.yml."
+            exit 1
+          fi
+
+          if [ "${expected_task_version}" != "${current_task_version}" ]; then
+            if [ -n "${GITHUB_ACTIONS}" ]; then
+              echo "The task binary: ${current_task_version} differs from the expected: ${expected_task_version}. Updating it..."
+              go install github.com/go-task/task/v${expected_task_major_version}/cmd/task@v${expected_task_version}
+              exit 0
+            fi
+
+            echo
+            echo "###############################################################"
+            echo "#"
+            echo "# WARNING"
+            echo "#"
+            echo "###############################################################"
+            echo "#"
+            echo "# The version of the local task binary: ${current_task_version}"
+            echo "# differs from the expected: ${expected_task_version}."
+            echo "# Resolve the issue by updating the local task binary to"
+            echo "# version: ${expected_task_version}."
+            echo "# A remediation option is to run:"
+            echo "# 'go install github.com/go-task/task/v${expected_task_major_version}/cmd/task@v${expected_task_version}',"
+            echo "# but the choice of installation method depends on the"
+            echo "# preferred way to install Task."
+            echo "#"
+            echo "###############################################################"
+            echo
+
+            sleep 3 # to ensure that user will see the message
+          fi
+        fi
+    silent: true
+  keep-mcvs-golang-action-version-local-taskfile-in-sync-with-github-workflow:
+    cmds:
+      - task: yq-install
+      - |
+        if [ -f .github/workflows/golang.yml ]; then
+          mcvs_golang_action_uses='.jobs."mcvs-golang-action".steps[] | select(.uses | test(".*/mcvs-golang-action@.*")) | .uses'
+          # Prefer the readable version in the trailing comment, e.g.
+          # uses: schubergphilis/mcvs-golang-action@<sha> # v3.12.1, and fall
+          # back to the ref itself if the action is not pinned to a sha. The
+          # pattern accepts semver pre-release and build metadata as well, e.g.
+          # v1.2.3, 1.2.3-rc.1 and v2.0.0-beta+exp.sha.5114f85.
+          expected_mcvs_golang_action_version=$(yq "${mcvs_golang_action_uses} | line_comment" .github/workflows/golang.yml | sed -nE 's/^[[:space:]]*(v?[0-9]+(\.[0-9]+)*(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?)[[:space:]]*$/\1/p')
+          if [ -z "${expected_mcvs_golang_action_version}" ]; then
+            expected_mcvs_golang_action_version=$(yq "${mcvs_golang_action_uses}" .github/workflows/golang.yml | sed -E 's/.*@(.*)/\1/')
+          fi
+          current_mcvs_golang_action_version=$(yq '.vars.REMOTE_URL_REF' Taskfile.yml)
+
+          if [ -z "${expected_mcvs_golang_action_version}" ] || [ -z "${current_mcvs_golang_action_version}" ]; then
+            echo "Failed to extract the expected and current version or both for the mcvs-golang-action. Please ensure that the mcvs-golang-action is defined in lower case in the .github/workflows/golang.yml file and the the REMOTE_URL_REF variable is present in the Taskfile.yml."
+            exit 1
+          fi
+
+          if [ "${expected_mcvs_golang_action_version}" != "${current_mcvs_golang_action_version}" ]; then
+            if [ -n "${GITHUB_ACTIONS}" ]; then
+              echo "Expected mcvs-golang-action: ${expected_mcvs_golang_action_version} is different than current version in Taskfile: ${current_mcvs_golang_action_version}, but do not let the pipeline fail otherwise Dependabot cannot update the version of the action."
+              exit 0
+            fi
+
+            echo
+            echo "###############################################################"
+            echo "#"
+            echo "# WARNING"
+            echo "#"
+            echo "###############################################################"
+            echo "#"
+            echo "# Expected mcvs-golang-action: ${expected_mcvs_golang_action_version},"
+            echo "# but current version in Taskfile: ${current_mcvs_golang_action_version}."
+            echo "#"
+            echo "# Resolve the issue by updating the REMOTE_URL_REF in the"
+            echo "# Taskfile.yml variable to: ${expected_mcvs_golang_action_version}."
+            echo "#"
+            echo "###############################################################"
+            echo
+
+            sleep 3 # to ensure that user will see the message
+          fi
+        fi
+    desc: |
+      Ensure that the mcvs-golang-action version in Taskfile.yml matches the
+      one in .github/workflows/golang.yml. Since Dependabot updates only the
+      workflow file, the Taskfile must be updated manually. This check ensures
+      that any version mismatch causes the pipeline to fail, prompting the user
+      to update the Taskfile to keep the pipeline running successfully.
+    silent: true
+  keep-local-and-remote-versions-in-sync:
+    cmds:
+      - task: keep-local-task-up-to-date-with-version-defined-in-action
+      - task: keep-mcvs-golang-action-version-local-taskfile-in-sync-with-github-workflow
+  lint:
+    cmds:
+      - task: golangci-lint
+    desc: run golangci-lint (alias for golangci-lint)
+    silent: true
+  mcvs-texttidy-install:
+    cmds:
+      - task: keep-local-and-remote-versions-in-sync
+      - |
+        if ! {{.MCVS_TEXTTIDY_BIN}} --version | grep -q {{.MCVS_TEXTTIDY_VERSION}}; then
+          echo "Installing mcvs-texttidy version {{.MCVS_TEXTTIDY_VERSION}}..."
+          go install github.com/schubergphilis/mcvs-texttidy/cmd/mcvs-texttidy@{{.MCVS_TEXTTIDY_VERSION}}
+        fi
+    silent: true
+  mcvs-texttidy-run:
+    cmds:
+      - "{{.MCVS_TEXTTIDY_BIN}}"
+    silent: true
+  mcvs-texttidy:
+    cmds:
+      - task: mcvs-texttidy-install
+      - task: mcvs-texttidy-run
+    desc: |
+      Install and run mcvs-texttidy to check for forbidden words in projects.
+    silent: true
+  mock-generate:
+    cmds:
+      - task: mocks
+    desc: Alias for `task remote:mocks`
+    silent: true
+  mockery-install:
+    cmds:
+      - |
+        mockery_major_version=$(echo "{{.MOCKERY_VERSION}}" | cut -d '.' -f 1)
+        if ! {{.MOCKERY_BIN}} version | grep "{{.MOCKERY_VERSION}}"; then
+          echo "Installing mockery version {{.MOCKERY_VERSION}}..."
+          go install github.com/vektra/mockery/${mockery_major_version}@{{.MOCKERY_VERSION}}
+        fi
+    internal: true
+    silent: true
+  mocks:
+    cmds:
+      - task: mockery-install
+      - |
+        {{.MOCKERY_BIN}}
+      - task: format
+    silent: true
+  mocks-tidy:
+    cmds:
+      - |
+        find . -type d -name 'mocks' -exec rm -r {} +
+      - task: mocks
+      - |
+        if [[ -n "$(git status --porcelain)" ]]; then
+          echo "Uncommitted changes detected. Did you forget to run: 'task remote:mocks'?"
+          exit 1
+        fi
+    silent: true
+  opa-fmt:
+    cmds:
+      - task: opa-install
+      - "{{.OPA_FMT}}"
+    desc: check formatting rego files using opa
+    silent: true
+  opa-fmt-write:
+    cmds:
+      - task: opa-install
+      - "{{.OPA_FMT}} --write"
+    desc: apply formatting rego files using opa
+    silent: true
+  opa-install:
+    cmds:
+      - |
+        if ! {{.OPA_BIN}} version | grep -q {{.OPA_VERSION_WITHOUT_V_PREFIX}}; then
+          echo "Installing OPA version {{.OPA_VERSION}}..."
+          go install github.com/open-policy-agent/opa@{{.OPA_VERSION}}
+        fi
+    silent: true
+  opa-run:
+    cmds:
+      - |
+        opa_cmd="opa test . --ignore \"*.json\""
+
+        for dir in $(find . -type f -name '*.rego' -exec dirname {} \; | sort -u); do
+          echo "Running ${opa_cmd} in directory: $dir"
+          (cd "$dir" && ${opa_cmd} -v --explain={{.QUERY_EXPLANATION}})
+
+          opa_code_coverage_overview=$(cd "$dir" && ${opa_cmd} --coverage)
+          echo "OPA code coverage overview:"
+          echo "${opa_code_coverage_overview}"
+
+          opa_code_coverage_actual=$(echo "${opa_code_coverage_overview}" | jq .coverage)
+          echo "opa_code_coverage_actual: ${opa_code_coverage_actual}"
+
+          int_number=$(echo "$opa_code_coverage_actual" | bc)
+          echo "int_number: ${int_number}"
+
+          echo "opa_code_coverage_actual: ${opa_code_coverage_actual}"
+          opa_code_coverage_actual_significance_of_two=$(echo $opa_code_coverage_actual | bc -l | xargs printf "%.2f")
+          echo "opa_code_coverage_actual_significance_of_two: ${opa_code_coverage_actual_significance_of_two}"
+
+          if (( $(echo "{{.OPA_CODE_COVERAGE_EXPECTED}} > ${opa_code_coverage_actual_significance_of_two}" | bc -l) )); then
+            echo "The actual OPA code coverage: '${opa_code_coverage_actual_significance_of_two}' is too low. Expected: '{{.OPA_CODE_COVERAGE_EXPECTED}}'. Resolve the issue by writing more OPA unit tests."
+            exit 1
+          elif (( $(echo "${opa_code_coverage_actual_significance_of_two} > {{.OPA_CODE_COVERAGE_EXPECTED}}" | bc -l) )); then
+            echo "The actual OPA code coverage: '${opa_code_coverage_actual_significance_of_two}' exceeds the expected coverage. Please adjust the threshold that is defined in the applicable GitHub workflow from '{{.OPA_CODE_COVERAGE_EXPECTED}}' to '${opa_code_coverage_actual_significance_of_two}'."
+            exit 1
+          fi
+        done
+    silent: true
+    vars:
+      QUERY_EXPLANATION: '{{.QUERY_EXPLANATION | default "fails"}}'
+  opa:
+    cmds:
+      - task: opa-install
+      - task: opa-run
+    desc: |
+      Install and run OPA. Issue: 'task remote:opa QUERY_EXPLANATION=full' to
+      follow the complete policy evaluation.
+    silent: true
+  present:
+    cmds:
+      - task: present-install
+      - task: present-config
+      - task: present-run
+  present-install:
+    cmds:
+      - |
+        if ! go version -m {{.PRESENT_BIN}} | grep "mod.*\/x\/tools" | awk '{print $3}' | grep -q {{.PRESENT_VERSION}}; then
+          echo "Installing present version {{.PRESENT_VERSION}}..."
+          go install golang.org/x/tools/cmd/present@{{.PRESENT_VERSION}}
+        fi
+    silent: true
+  present-config:
+    cmds:
+      - |
+        for dir in static templates; do
+          cp -R ~/go/pkg/mod/golang.org/x/tools@{{.PRESENT_VERSION}}/cmd/present//"$dir" {{.PRESENT_PRESENTATIONS_HOME}};
+          chmod -R 744 {{.PRESENT_PRESENTATIONS_HOME}}/${dir};
+        done
+        chmod 744 {{.PRESENT_PRESENTATIONS_HOME}}/templates/slides.tmpl
+        awk '/Thank you/{for(i=NR-1;i<=NR+8;i++) delete a[i]; next} {a[NR]=$0} END {for(i=1;i<=NR;i++) if(i in a) print a[i]}' {{.PRESENT_PRESENTATIONS_HOME}}/templates/slides.tmpl > {{.PRESENT_PRESENTATIONS_HOME}}/templates/slides.tmp
+        mv {{.PRESENT_PRESENTATIONS_HOME}}/templates/slides.tmp {{.PRESENT_PRESENTATIONS_HOME}}/templates/slides.tmpl
+    silent: true
+  present-run:
+    cmds:
+      - "{{.PRESENT_BIN}} -base {{.PRESENT_PRESENTATIONS_HOME}} -content {{.PRESENT_PRESENTATIONS_HOME}}"
+    silent: true
+  regal-install:
+    cmds:
+      - |
+        if ! {{.REGAL_BIN}} version | grep -q {{.REGAL_VERSION_WITHOUT_V_PREFIX}}; then
+          # regal version installed using `go install` does not include
+          # version, see: https://github.com/open-policy-agent/regal/issues/1275
+          echo "Installing regal version {{.REGAL_VERSION}}..."
+          curl -L -o {{.REGAL_BIN}} https://github.com/open-policy-agent/regal/releases/download/{{.REGAL_VERSION}}/regal_{{.OS_COMMAND_TYPE}}_{{.OS_COMMAND_TYPE_ARCHITECTURE}}
+          chmod +x {{.REGAL_BIN}}
+        fi
+    silent: true
+  regal-run:
+    cmds:
+      - |
+        if ! {{.REGAL_BIN}} lint .; then
+          echo "regal linting failed. Run: 'task remote:opa-fmt-write' to fix the issue"
+          exit 1
+        fi
+    silent: true
+  regal:
+    cmds:
+      - task: regal-install
+      - task: regal-run
+    desc: run regal
+    silent: true
+  test:
+    cmds:
+      - task: golang-log
+      - task: gotestsum-install
+      - |
+        set -eu
+
+        if [ "{{.GTA_PARTIAL_TESTING}}" = true ]; then
+          echo "Running partial test suite... against origin {{ .GTA_BASE_BRANCH }}"
+
+          PKGS="$(gta -include "$(go list -f '{{ .Module.Path }}')/" -base origin/{{ .GTA_BASE_BRANCH }})" \
+            || { rc=$?; echo "gta failed (exit $rc)"; exit $rc; }
+
+          if [ -z "${PKGS}" ]; then
+            echo "No packages changed compared to base branch {{ .GTA_BASE_BRANCH }}. Skipping tests."
+            exit 0;
+          fi
+        else
+          PKGS=./...
+        fi
+
+        # when "if testing.Short() { t.Skip() }" is in the go code then such
+        # tests will be skipped if -short is used.
+        #
+        # gotestsum wraps 'go test' and reports the total number of tests that
+        # have been run, per testing type.
+        if [ "{{.GOTESTSUM_ENABLED}}" = "true" ]; then
+          set -- {{.GOTESTSUM_BIN}} --format {{.GOTESTSUM_FORMAT}} --
+        else
+          set -- go test
+        fi
+
+        "$@" \
+          -p {{.GOLANG_PARALLEL_TESTS}} \
+          -race \
+          -short \
+          --tags={{.TEST_TAGS}} \
+          ${PKGS} \
+          {{.TEST_EXTRA_ARGS}} \
+          -timeout {{.TEST_TIMEOUT}}
+    desc: run test
+    silent: true
+  test-cicd:
+    cmds:
+      - task: test
+        vars:
+          TEST_EXTRA_ARGS: >-
+            -v
+          TEST_TAGS: "{{.TEST_TAGS}}"
+    desc: test within CICD should contain verbose logging to facilitate debugging
+    silent: true
+  test-component:
+    cmds:
+      - task: check-docker-networks
+        vars:
+          CHECK_TYPE: before
+      - task: test
+        vars:
+          TEST_TAGS: component
+      - task: check-docker-networks
+        vars:
+          CHECK_TYPE: after
+    desc: run component tests
+    silent: true
+  test-component-cicd:
+    cmds:
+      - task: test-cicd
+        vars:
+          TEST_TAGS: component
+    desc: run component tests in CICD
+    silent: true
+  test-e2e:
+    cmds:
+      - task: test
+        vars:
+          TEST_TAGS: e2e
+    desc: run end-to-end tests
+    silent: true
+  test-e2e-cicd:
+    cmds:
+      - task: test-cicd
+        vars:
+          TEST_TAGS: e2e
+    desc: run end-to-end tests in CICD
+    silent: true
+  test-integration:
+    cmds:
+      - task: check-docker-networks
+        vars:
+          CHECK_TYPE: before
+      - task: test
+        vars:
+          TEST_TAGS: integration
+      - task: check-docker-networks
+        vars:
+          CHECK_TYPE: after
+    desc: run integration tests
+    silent: true
+  test-integration-cicd:
+    cmds:
+      - task: test-cicd
+        vars:
+          TEST_TAGS: integration
+    desc: run integration tests in CICD
+    silent: true
+  wsl-install:
+    cmds:
+      - task: keep-local-and-remote-versions-in-sync
+      - |
+        wsl_major_version=$(echo "{{.WSL_VERSION}}" | cut -d '.' -f 1)
+        if ! command -v {{.WSL_BIN}} >/dev/null 2>&1 || \
+           ! {{.WSL_BIN}} -V | grep -q {{.WSL_VERSION}}; then
+          echo "Installing wsl version {{.WSL_VERSION}}..."
+          go install github.com/bombsimon/wsl/${wsl_major_version}/cmd/wsl@{{.WSL_VERSION}}
+        fi
+    silent: true
+  yq-install:
+    cmds:
+      # Enabling the following task as a dependency will create an infinite
+      # loop, as the yq-install unit is already a dependency within the called
+      # unit.
+      # - task: keep-local-and-remote-versions-in-sync
+      - |
+        yq_major_version=$(echo "{{.YQ_VERSION}}" | cut -d '.' -f 1)
+        if ! yq --version | grep -q "version {{.YQ_VERSION}}"; then
+          echo "Installing yq version {{.YQ_VERSION}}..."
+          go install \
+            github.com/mikefarah/yq/${yq_major_version}@{{.YQ_VERSION}}
+        fi
+    silent: true
