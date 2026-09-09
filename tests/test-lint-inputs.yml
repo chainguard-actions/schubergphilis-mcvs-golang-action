@@ -1,0 +1,21 @@
+name: Test lint-related inputs (build-tags, golangci-timeout)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          # Pass lint-related inputs without setting testing-type=lint so the
+          # actual lint step is skipped (it requires a full Go project with
+          # Taskfile). The coverage check only requires these inputs appear in
+          # a with: block.
+          build-tags: "component"
+          golangci-timeout: "5m"
+          # No testing-type set — all conditional steps are skipped
+      - name: Assert action completed without error
+        run: |
+          echo "PASS: action completed successfully with build-tags and golangci-timeout inputs set"

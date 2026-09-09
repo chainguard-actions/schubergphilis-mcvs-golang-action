@@ -1,0 +1,24 @@
+name: Test private go modules token configuration
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          github-token-for-downloading-private-go-modules: "fake-private-token"
+          # No testing-type set, so only the git config step runs (plus the token step)
+      - name: Assert git config was set for private modules
+        run: |
+          echo "Checking git config for private module token..."
+          GIT_CONFIG=$(git config --global --get url.https://fake-private-token@github.com/.insteadOf 2>&1 || true)
+          echo "git config value: $GIT_CONFIG"
+          if [ "$GIT_CONFIG" = "https://github.com/" ]; then
+            echo "PASS: git config correctly set for private go modules"
+          else
+            echo "FAIL: expected git config to be 'https://github.com/', got: '$GIT_CONFIG'"
+            exit 1
+          fi

@@ -1,0 +1,53 @@
+name: Test build binary release
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          release-dir: "tests/fixtures/cmd/hello"
+          release-application-name: "hello"
+          release-architecture: "amd64"
+          release-os: "linux"
+          release-type: "binary"
+          # go-version-file defaults to go.mod which exists in the action repo root
+      - name: Assert binary was built
+        run: |
+          BINARY_PATH="$GITHUB_WORKSPACE/build/binary/hello/amd64/main"
+          echo "Checking for binary at: $BINARY_PATH"
+          if [ ! -f "$BINARY_PATH" ]; then
+            echo "FAIL: binary not found at $BINARY_PATH"
+            ls -la "$GITHUB_WORKSPACE/build/" 2>/dev/null || echo "build dir does not exist"
+            exit 1
+          fi
+          echo "Binary found, checking it is executable..."
+          if [ ! -x "$BINARY_PATH" ]; then
+            echo "FAIL: binary is not executable"
+            exit 1
+          fi
+          echo "Running binary..."
+          OUTPUT=$("$BINARY_PATH" 2>&1)
+          echo "output: $OUTPUT"
+          if [ "$OUTPUT" != "Hello, World!" ]; then
+            echo "FAIL: unexpected output: $OUTPUT"
+            exit 1
+          fi
+          echo "PASS: binary built and runs correctly"
+      - name: Assert compute_asset_name output is set
+        env:
+          ASSET_NAME: ${{ steps.action.outputs.asset_name }}
+        run: |
+          echo "asset_name: $ASSET_NAME"
+          if [ -z "$ASSET_NAME" ]; then
+            echo "FAIL: asset_name output is empty"
+            exit 1
+          fi
+          if ! echo "$ASSET_NAME" | grep -q "hello"; then
+            echo "FAIL: asset_name does not contain 'hello': $ASSET_NAME"
+            exit 1
+          fi
+          echo "PASS: asset_name is set to '$ASSET_NAME'"

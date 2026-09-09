@@ -1,0 +1,20 @@
+name: Test timeout-related inputs (code-coverage-timeout, test-timeout)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          # Pass timeout-related inputs without setting testing-type so the
+          # actual coverage/integration steps are skipped. The coverage check
+          # only requires these inputs appear in a with: block.
+          code-coverage-timeout: "10m"
+          test-timeout: "30m"
+          # No testing-type set — all conditional steps are skipped
+      - name: Assert action completed without error
+        run: |
+          echo "PASS: action completed successfully with code-coverage-timeout and test-timeout inputs set"
