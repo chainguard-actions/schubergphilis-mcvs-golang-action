@@ -1,0 +1,40 @@
+name: Test build binary scenario
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          go-version-file: "go.mod"
+          release-dir: "tests/fixtures/go-project"
+          release-application-name: "hello"
+          release-architecture: "amd64"
+          release-os: "linux"
+          release-type: "binary"
+      - name: Assert binary was built
+        run: |
+          BINARY_PATH="build/binary/hello/amd64/main"
+          echo "Checking for binary at: $BINARY_PATH"
+          if [ ! -f "$BINARY_PATH" ]; then
+            echo "FAIL: binary not found at $BINARY_PATH"
+            ls -la build/ 2>/dev/null || echo "build/ directory does not exist"
+            exit 1
+          fi
+          echo "Binary found:"
+          ls -la "$BINARY_PATH"
+          echo "PASS: binary was built successfully"
+      - name: Assert binary is executable
+        run: |
+          BINARY_PATH="build/binary/hello/amd64/main"
+          echo "Verifying binary is executable..."
+          if [ ! -x "$BINARY_PATH" ]; then
+            echo "FAIL: binary is not executable"
+            exit 1
+          fi
+          OUTPUT=$("$BINARY_PATH" 2>&1 || true)
+          echo "Binary output: $OUTPUT"
+          echo "PASS: binary is executable"

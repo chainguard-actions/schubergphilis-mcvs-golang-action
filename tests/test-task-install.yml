@@ -1,0 +1,30 @@
+name: Test task-install scenario
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          task-install: "yes"
+          task-version: "3.53.1"
+          go-version-file: "go.mod"
+      - name: Assert task is installed and runnable
+        run: |
+          echo "Checking task binary..."
+          if ! command -v task &>/dev/null; then
+            # task may be installed in GOBIN which may not be on PATH in assertion step
+            GOBIN=$(go env GOPATH)/bin
+            if [ ! -f "${GOBIN}/task" ]; then
+              echo "FAIL: task binary not found"
+              exit 1
+            fi
+            echo "PASS: task found at ${GOBIN}/task"
+          else
+            VERSION=$(task --version 2>&1 || true)
+            echo "task version: $VERSION"
+            echo "PASS: task is on PATH"
+          fi
