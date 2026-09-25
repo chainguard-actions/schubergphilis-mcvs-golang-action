@@ -105,7 +105,7 @@ runs:
     # Install task and the golang version that has been defined in the go.mod
     # file.
     #
-    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+    - uses: chainguard-actions/actions-setup-go@738fd0174f4ff963ac8c2e9dfe83e3191b2777fb # v7.0.0
       if: |
         inputs.release-dir != '' ||
         inputs.task-install == 'yes' ||
@@ -147,11 +147,11 @@ runs:
         echo "verifying that task can be found and run..."
         task --version
     - run: |
-        git config --global url.https://${GITHUB_TOKEN_FOR_PRIVATE_MODULES}@github.com/.insteadOf https://github.com/
+        git config --global url."https://${GH_TOKEN_PRIVATE_MODULES}@github.com/".insteadOf https://github.com/
       shell: bash
       if: ${{ inputs.github-token-for-downloading-private-go-modules != '' }}
       env:
-        GITHUB_TOKEN_FOR_PRIVATE_MODULES: ${{ inputs.github-token-for-downloading-private-go-modules }}
+        GH_TOKEN_PRIVATE_MODULES: ${{ inputs.github-token-for-downloading-private-go-modules }}
     - if: |
         inputs.release-dir != '' ||
         inputs.testing-type == 'component' ||
@@ -183,7 +183,7 @@ runs:
     #
     # * Grype
     #
-    - uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+    - uses: chainguard-actions/anchore-scan-action@771570842dd6dc0aec4a74f6226a15e7178ae83d # v7.4.2
       if: inputs.token != '' && inputs.testing-type == 'security-grype'
       with:
         grype-version: ${{ inputs.grype-version }}
@@ -309,7 +309,7 @@ runs:
         GOOS: ${{ inputs.release-os }}
         SOURCE_FILE: ${{ inputs.release-dir }}/main.go
         RELEASE_BUILD_TAGS: ${{ inputs.release-build-tags }}
-        RELEASE_REF_NAME: ${{ github.ref_name }}
+        REF_NAME: ${{ github.ref_name }}
       run: |
         mkdir -p "${BUILD_DIR}"
         if [ -n "${RELEASE_BUILD_TAGS}" ]; then
@@ -318,7 +318,7 @@ runs:
             -o "${BUILD_DIR}/main" "${SOURCE_FILE}"
         else
           go build \
-            -ldflags="-X 'main.Version=${RELEASE_REF_NAME}'" \
+            -ldflags="-X 'main.Version=${REF_NAME}'" \
             -o "${BUILD_DIR}/main" "${SOURCE_FILE}"
         fi
     #
@@ -330,13 +330,13 @@ runs:
       shell: bash
       env:
         RELEASE_APPLICATION_NAME: ${{ inputs.release-application-name }}
-        RELEASE_REF_NAME: ${{ github.ref_name }}
+        REF_NAME: ${{ github.ref_name }}
         RELEASE_OS: ${{ inputs.release-os }}
         RELEASE_ARCHITECTURE: ${{ inputs.release-architecture }}
         RELEASE_BUILD_TAGS: ${{ inputs.release-build-tags }}
       run: |
         safe_app_name=$(printf '%s' "${RELEASE_APPLICATION_NAME}" | tr -d '\n\r')
-        safe_ref_name=$(printf '%s' "${RELEASE_REF_NAME}" | tr -d '\n\r')
+        safe_ref_name=$(printf '%s' "${REF_NAME}" | tr -d '\n\r')
         safe_os=$(printf '%s' "${RELEASE_OS}" | tr -d '\n\r')
         safe_arch=$(printf '%s' "${RELEASE_ARCHITECTURE}" | tr -d '\n\r')
         safe_build_tags=$(printf '%s' "${RELEASE_BUILD_TAGS}" | tr -d '\n\r')
@@ -362,7 +362,7 @@ runs:
         github.event_name == 'push' &&
         contains(github.ref, 'refs/tags/') &&
         inputs.release-dir != ''
-      uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # 2.11.5
+      uses: chainguard-actions/svenstaro-upload-release-action@90ca861869858fb0b2fa42b334b359aab4f64ec9 # 2.11.5
       with:
         repo_token: ${{ inputs.token }}
         file: build/${{ inputs.release-type }}/${{ inputs.release-application-name }}/${{ inputs.release-architecture }}/main

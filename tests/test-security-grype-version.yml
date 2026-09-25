@@ -1,4 +1,4 @@
-name: Test security-grype with grype-version
+name: Test security-grype with explicit grype-version
 on:
   workflow_dispatch:
 jobs:
@@ -11,7 +11,7 @@ jobs:
         continue-on-error: true
         with:
           testing-type: "security-grype"
-          grype-version: "0.88.0"
+          grype-version: "0.79.4"
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Assert grype scan with version ran or failed gracefully
         env:
@@ -19,7 +19,7 @@ jobs:
         run: |
           echo "outcome: $OUTCOME"
           if [ "$OUTCOME" = "success" ]; then
-            echo "PASS: grype scan with specified version completed successfully"
+            echo "PASS: grype scan with explicit version completed successfully"
           elif [ "$OUTCOME" = "failure" ]; then
             echo "PASS: grype scan ran but failed gracefully (vulnerabilities found or harness environment)"
           else
