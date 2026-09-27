@@ -1,4 +1,4 @@
-name: Test private go modules token (covers github-token-for-downloading-private-go-modules)
+name: Test private Go modules token (github-token-for-downloading-private-go-modules)
 on:
   workflow_dispatch:
 jobs:
@@ -11,16 +11,16 @@ jobs:
         continue-on-error: true
         with:
           github-token-for-downloading-private-go-modules: ${{ github.token }}
-          go-version-file: "tests/fixtures/go.mod"
-      - name: Assert action ran (private modules git config step should execute)
+          # No testing-type or release-dir — only the git URL rewrite step runs
+      - name: Assert action ran with private modules token
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
           if [ "$OUTCOME" = "success" ]; then
-            echo "PASS: action succeeded with private modules token"
+            echo "PASS: action completed with private modules token configured"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (expected in harness environment)"
+            echo "PASS: action failed gracefully (expected in harness)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1

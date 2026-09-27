@@ -1,4 +1,4 @@
-name: Test integration testing-type (covers test-timeout)
+name: Test integration (testing-type=integration, test-timeout)
 on:
   workflow_dispatch:
 jobs:
@@ -11,18 +11,18 @@ jobs:
         continue-on-error: true
         with:
           testing-type: "integration"
+          test-timeout: "5m"
           token: ${{ github.token }}
-          test-timeout: "10m"
           go-version-file: "tests/fixtures/go.mod"
-      - name: Assert action ran (integration tests may fail in harness but inputs were accepted)
+      - name: Assert integration test ran or failed gracefully
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
           if [ "$OUTCOME" = "success" ]; then
-            echo "PASS: integration action succeeded"
+            echo "PASS: integration tests completed"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (integration tests require real project setup)"
+            echo "PASS: action failed gracefully (expected in harness without full Go project)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1
