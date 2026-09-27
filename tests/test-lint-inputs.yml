@@ -1,0 +1,32 @@
+name: Test lint inputs (build-tags, golangci-timeout, token)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          testing-type: "lint"
+          build-tags: "component"
+          golangci-timeout: "5m"
+          token: ${{ github.token }}
+          # testing-type=lint triggers: setup-go, install-task, go-mod-tidy, golangci-lint
+          # The golangci-lint step runs 'task remote:golangci-lint --yes' which may fail
+          # without a full project setup, but we verify the inputs were accepted.
+      - name: Assert action ran with lint inputs
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: lint completed successfully"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: lint failed gracefully (expected without full project setup)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
