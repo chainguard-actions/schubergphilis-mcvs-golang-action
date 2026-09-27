@@ -1,4 +1,4 @@
-name: Test lint inputs (build-tags, golangci-timeout, testing-type, token)
+name: Test lint inputs (testing-type, token, build-tags, golangci-timeout)
 on:
   workflow_dispatch:
 jobs:
@@ -11,22 +11,23 @@ jobs:
         continue-on-error: true
         with:
           testing-type: "lint"
-          build-tags: "component"
-          golangci-timeout: "5m"
           token: ${{ github.token }}
+          build-tags: "unit"
+          golangci-timeout: "5m"
           go-version-file: "tests/fixtures/go.mod"
       - name: Assert action ran with lint inputs
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
-          # The lint testing-type runs golangci-lint via task remote:golangci-lint.
-          # Under the act harness this will fail because the remote task is not
-          # available, but the action must not crash unexpectedly.
+          # The action runs golangci-lint via task remote:golangci-lint --yes.
+          # Under the harness this will likely fail because there is no real
+          # Go project to lint, but the important thing is that the action
+          # accepted all the inputs and ran (did not fail at startup).
           if [ "$OUTCOME" = "success" ]; then
             echo "PASS: action completed successfully with lint inputs"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (expected under act harness for lint)"
+            echo "PASS: action failed gracefully (expected under harness without a full Go project)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1

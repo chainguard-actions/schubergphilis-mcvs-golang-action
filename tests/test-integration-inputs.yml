@@ -1,4 +1,4 @@
-name: Test integration inputs (test-timeout, testing-type, token)
+name: Test integration inputs (testing-type=integration, test-timeout, token)
 on:
   workflow_dispatch:
 jobs:
@@ -11,22 +11,22 @@ jobs:
         continue-on-error: true
         with:
           testing-type: "integration"
-          test-timeout: "30m"
           token: ${{ github.token }}
+          test-timeout: "5m"
           go-version-file: "tests/fixtures/go.mod"
       - name: Assert action ran with integration inputs
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
-          # The integration testing-type runs task remote:test-integration-cicd
-          # which requires a full Go project with integration tests. Under the
-          # act harness this will fail because the remote task is not available,
-          # but the action must not crash unexpectedly.
+          # The action runs task remote:test-integration-cicd --yes.
+          # Under the harness this will likely fail because there is no real
+          # Go project with integration tests, but the important thing is that
+          # the action accepted all the inputs and ran (did not fail at startup).
           if [ "$OUTCOME" = "success" ]; then
             echo "PASS: action completed successfully with integration inputs"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (expected under act harness for integration)"
+            echo "PASS: action failed gracefully (expected under harness without a full Go project)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1

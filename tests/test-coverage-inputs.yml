@@ -1,4 +1,4 @@
-name: Test coverage inputs (code-coverage-timeout, testing-type, token)
+name: Test coverage inputs (testing-type=coverage, code-coverage-timeout)
 on:
   workflow_dispatch:
 jobs:
@@ -11,23 +11,23 @@ jobs:
         continue-on-error: true
         with:
           testing-type: "coverage"
-          code-coverage-timeout: "10m"
-          code-coverage-expected: "80"
           token: ${{ github.token }}
+          code-coverage-expected: "80"
+          code-coverage-timeout: "5m"
           go-version-file: "tests/fixtures/go.mod"
       - name: Assert action ran with coverage inputs
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
-          # The coverage testing-type runs task remote:coverage which requires
-          # a full Go project with tests. Under the act harness this will fail
-          # because the remote task is not available or the project has no tests,
-          # but the action must not crash unexpectedly.
+          # The action runs task remote:coverage --yes.
+          # Under the harness this will likely fail because there is no real
+          # Go project with tests, but the important thing is that the action
+          # accepted all the inputs and ran (did not fail at startup).
           if [ "$OUTCOME" = "success" ]; then
             echo "PASS: action completed successfully with coverage inputs"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (expected under act harness for coverage)"
+            echo "PASS: action failed gracefully (expected under harness without a full Go project)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1
