@@ -1,4 +1,4 @@
-name: Test lint inputs (build-tags, golangci-timeout, testing-type, token)
+name: Test grype inputs (grype-version, token)
 on:
   workflow_dispatch:
 jobs:
@@ -10,12 +10,10 @@ jobs:
         uses: .
         continue-on-error: true
         with:
-          go-version-file: "tests/fixtures/goapp/go.mod"
-          testing-type: "lint"
+          testing-type: "security-grype"
           token: ${{ github.token }}
-          build-tags: "unit"
-          golangci-timeout: "5m"
-      - name: Assert action ran (lint step expected to fail without Taskfile)
+          grype-version: "0.74.0"
+      - name: Assert action ran (grype step may fail in test environment)
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
@@ -23,7 +21,7 @@ jobs:
           if [ "$OUTCOME" = "success" ]; then
             echo "PASS: action succeeded"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (no Taskfile in test repo)"
+            echo "PASS: action failed gracefully (expected in test environment)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1

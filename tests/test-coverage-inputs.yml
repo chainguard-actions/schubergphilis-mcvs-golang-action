@@ -1,4 +1,4 @@
-name: Test lint inputs (build-tags, golangci-timeout, testing-type, token)
+name: Test coverage inputs (code-coverage-timeout, test-timeout)
 on:
   workflow_dispatch:
 jobs:
@@ -11,11 +11,11 @@ jobs:
         continue-on-error: true
         with:
           go-version-file: "tests/fixtures/goapp/go.mod"
-          testing-type: "lint"
+          testing-type: "coverage"
           token: ${{ github.token }}
-          build-tags: "unit"
-          golangci-timeout: "5m"
-      - name: Assert action ran (lint step expected to fail without Taskfile)
+          code-coverage-timeout: "5m"
+          test-timeout: "10m"
+      - name: Assert action ran (coverage step expected to fail without Taskfile)
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |

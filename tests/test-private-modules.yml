@@ -1,0 +1,25 @@
+name: Test private modules input (github-token-for-downloading-private-go-modules)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          # No testing-type and no release-dir: all heavy steps are skipped.
+          # Only the git config step for private modules will run.
+          task-install: "no"
+          github-token-for-downloading-private-go-modules: ${{ github.token }}
+      - name: Assert git config was applied for private modules
+        run: |
+          echo "Checking git config for private module URL rewriting..."
+          GIT_CONFIG=$(git config --global --get-all url.https://github.com/.insteadof 2>/dev/null || true)
+          echo "git config url rewrite: $GIT_CONFIG"
+          if [ -z "$GIT_CONFIG" ]; then
+            echo "FAIL: git config for private modules was not set"
+            exit 1
+          fi
+          echo "PASS: git config for private modules is set"
