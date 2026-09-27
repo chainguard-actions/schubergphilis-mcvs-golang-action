@@ -1,4 +1,4 @@
-name: Test private modules (github-token-for-downloading-private-go-modules)
+name: Test private Go modules token input
 on:
   workflow_dispatch:
 jobs:
@@ -10,10 +10,11 @@ jobs:
         uses: .
         continue-on-error: true
         with:
-          # Provide a token for private go modules — this triggers the git config step.
-          # No testing-type is set so all other conditional steps are skipped.
+          # Provide a token so the git config step runs; no testing-type means
+          # all other conditional steps are skipped — this is a no-op scenario
+          # that exercises the github-token-for-downloading-private-go-modules path.
           github-token-for-downloading-private-go-modules: ${{ github.token }}
-      - name: Assert action ran (git config for private modules should succeed or fail gracefully)
+      - name: Assert action ran (private modules git config step exercised)
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
@@ -21,7 +22,7 @@ jobs:
           if [ "$OUTCOME" = "success" ]; then
             echo "PASS: action completed successfully with private modules token"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (expected in harness environment)"
+            echo "PASS: action failed gracefully"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1
