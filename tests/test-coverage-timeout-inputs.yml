@@ -1,4 +1,4 @@
-name: Test lint inputs (build-tags, golangci-timeout, testing-type, token)
+name: Test coverage and timeout inputs (code-coverage-timeout, test-timeout, testing-type)
 on:
   workflow_dispatch:
 jobs:
@@ -10,23 +10,23 @@ jobs:
         uses: .
         continue-on-error: true
         with:
-          testing-type: lint
-          build-tags: component
-          golangci-timeout: "5m"
+          testing-type: coverage
+          code-coverage-timeout: "5m"
+          test-timeout: "10m"
           token: ${{ github.token }}
           go-version-file: tests/fixtures/simple-app/go.mod
-      - name: Assert action ran with lint inputs
+      - name: Assert action ran with coverage timeout inputs
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "action outcome: $OUTCOME"
-          # The lint testing-type runs golangci-lint via task remote:golangci-lint.
-          # This will fail in the harness because there is no Taskfile or golangci config,
+          # The coverage testing-type runs task remote:coverage --yes.
+          # This will fail in the harness because there is no Taskfile,
           # but the action must have at least started (not a setup failure).
           if [ "$OUTCOME" = "success" ]; then
-            echo "PASS: action succeeded with lint inputs"
+            echo "PASS: action succeeded with coverage timeout inputs"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (expected — no Taskfile/golangci config in harness)"
+            echo "PASS: action failed gracefully (expected — no Taskfile in harness)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1
