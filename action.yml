@@ -105,7 +105,7 @@ runs:
     # Install task and the golang version that has been defined in the go.mod
     # file.
     #
-    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+    - uses: chainguard-actions/actions-setup-go@738fd0174f4ff963ac8c2e9dfe83e3191b2777fb # v7.0.0
       if: |
         inputs.release-dir != '' ||
         inputs.task-install == 'yes' ||
@@ -183,7 +183,7 @@ runs:
     #
     # * Grype
     #
-    - uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+    - uses: chainguard-actions/anchore-scan-action@771570842dd6dc0aec4a74f6226a15e7178ae83d # v7.4.2
       if: inputs.token != '' && inputs.testing-type == 'security-grype'
       with:
         grype-version: ${{ inputs.grype-version }}
@@ -365,7 +365,7 @@ runs:
         github.event_name == 'push' &&
         contains(github.ref, 'refs/tags/') &&
         inputs.release-dir != ''
-      uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # 2.11.5
+      uses: chainguard-actions/svenstaro-upload-release-action@90ca861869858fb0b2fa42b334b359aab4f64ec9 # 2.11.5
       with:
         repo_token: ${{ inputs.token }}
         file: build/${{ inputs.release-type }}/${{ inputs.release-application-name }}/${{ inputs.release-architecture }}/main
