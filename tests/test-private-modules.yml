@@ -1,4 +1,4 @@
-name: Test lint-related inputs (build-tags, golangci-timeout, token, testing-type)
+name: Test github-token-for-downloading-private-go-modules input
 on:
   workflow_dispatch:
 jobs:
@@ -6,18 +6,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Pre-install fake task binary
-        run: |
-          # Install a fake task binary that accepts any subcommand and exits 0.
-          # This prevents the action's lint step (task remote:golangci-lint --yes)
-          # from failing due to missing golangci-lint tooling.
-          cat > /usr/local/bin/task << 'EOF'
-          #!/bin/sh
-          echo "Task version: v3.51.1"
-          exit 0
-          EOF
-          chmod +x /usr/local/bin/task
-          echo "Fake task installed: $(task --version)"
       - id: action
         uses: .
         with:
@@ -27,10 +15,18 @@ jobs:
           release-architecture: "amd64"
           release-os: "linux"
           release-type: "binary"
-          testing-type: "lint"
-          token: ${{ github.token }}
-          build-tags: "integration"
-          golangci-timeout: "5m"
+          github-token-for-downloading-private-go-modules: ${{ github.token }}
+      - name: Assert git config was set for private modules
+        run: |
+          echo "Checking git config for private module URL rewrite..."
+          GIT_CONFIG=$(git config --global --get-regexp "url\." 2>/dev/null || true)
+          echo "git config url entries: $GIT_CONFIG"
+          if echo "$GIT_CONFIG" | grep -q "github.com"; then
+            echo "PASS: git config URL rewrite for github.com is set"
+          else
+            echo "FAIL: git config URL rewrite for github.com was not set"
+            exit 1
+          fi
       - name: Assert binary was built
         run: |
           BINARY_PATH="build/binary/hello/amd64/main"
