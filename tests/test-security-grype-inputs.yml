@@ -1,4 +1,4 @@
-name: Test security-grype with token and grype-version
+name: Test security grype inputs coverage
 on:
   workflow_dispatch:
 jobs:
@@ -6,6 +6,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Configure git identity
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
       - id: action
         uses: .
         continue-on-error: true
@@ -13,17 +17,19 @@ jobs:
           testing-type: "security-grype"
           token: ${{ github.token }}
           grype-version: "0.88.0"
-          # Both token and grype-version are set, so anchore/scan-action will run.
-          # It may fail due to the sentinel GITHUB_REPOSITORY, but we assert on outcome.
-      - name: Assert action ran (grype scan attempted or failed gracefully)
+          go-version-file: "go.mod"
+      - name: Assert action ran (security-grype step attempted or failed gracefully)
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
+          # The security-grype testing-type runs anchore/scan-action.
+          # Under the harness, this may succeed or fail depending on environment.
+          # Either outcome is acceptable as long as the action ran (not skipped).
           if [ "$OUTCOME" = "success" ]; then
-            echo "PASS: grype scan completed successfully"
+            echo "PASS: action succeeded"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: grype scan failed gracefully (expected under harness sentinel repo)"
+            echo "PASS: action failed gracefully (expected in harness)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1

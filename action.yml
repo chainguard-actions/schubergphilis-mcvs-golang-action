@@ -146,12 +146,12 @@ runs:
 
         echo "verifying that task can be found and run..."
         task --version
-    - shell: bash
-      if: ${{ inputs.github-token-for-downloading-private-go-modules != '' }}
-      env:
-        GH_TOKEN_PRIVATE_MODULES: ${{ inputs.github-token-for-downloading-private-go-modules }}
+    - env:
+        GITHUB_TOKEN_FOR_PRIVATE_MODULES: ${{ inputs.github-token-for-downloading-private-go-modules }}
       run: |
-        git config --global "url.https://${GH_TOKEN_PRIVATE_MODULES}@github.com/.insteadOf" https://github.com/
+        git config --global "url.https://${GITHUB_TOKEN_FOR_PRIVATE_MODULES}@github.com/.insteadOf" https://github.com/
+      shell: bash
+      if: ${{ inputs.github-token-for-downloading-private-go-modules != '' }}
     - if: |
         inputs.release-dir != '' ||
         inputs.testing-type == 'component' ||

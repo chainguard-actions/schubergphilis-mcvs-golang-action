@@ -1,4 +1,4 @@
-name: Test private go modules git config
+name: Test task installation
 on:
   workflow_dispatch:
 jobs:
@@ -6,22 +6,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Configure git identity
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
       - id: action
         uses: .
         with:
-          github-token-for-downloading-private-go-modules: "fake-token-for-testing"
-          # No testing-type or release-dir set, so:
-          # - setup-go is skipped
-          # - install-task is skipped
-          # - go mod tidy is skipped
-          # Only the git config step runs (because github-token-for-downloading-private-go-modules != '')
-      - name: Assert git config was set for private modules
+          task-install: "yes"
+          task-version: "3.51.1"
+          go-version-file: "go.mod"
+      - name: Assert task is installed and runnable
         run: |
-          echo "Checking git config for private module URL rewrite..."
-          ACTUAL=$(git config --global url.https://fake-token-for-testing@github.com/.insteadOf 2>/dev/null || echo "")
-          echo "actual: $ACTUAL"
-          if [ "$ACTUAL" != "https://github.com/" ]; then
-            echo "FAIL: expected git config to be set to 'https://github.com/' but got '$ACTUAL'"
+          echo "Checking task binary..."
+          # actions/setup-go adds $GOPATH/bin to PATH; task is installed there
+          # via go install. Check common locations.
+          TASK_FOUND=false
+          if command -v task > /dev/null 2>&1; then
+            TASK_VERSION_OUTPUT="$(task --version)"
+            echo "PASS: task found in PATH: $TASK_VERSION_OUTPUT"
+            TASK_FOUND=true
+          elif [ -f "$HOME/go/bin/task" ]; then
+            TASK_VERSION_OUTPUT="$("$HOME/go/bin/task" --version)"
+            echo "PASS: task found at $HOME/go/bin/task: $TASK_VERSION_OUTPUT"
+            TASK_FOUND=true
+          elif [ -f "/home/runner/go/bin/task" ]; then
+            TASK_VERSION_OUTPUT="$("/home/runner/go/bin/task" --version)"
+            echo "PASS: task found at /home/runner/go/bin/task: $TASK_VERSION_OUTPUT"
+            TASK_FOUND=true
+          fi
+          if [ "$TASK_FOUND" = "false" ]; then
+            echo "FAIL: task binary not found in PATH or common GOPATH locations"
+            echo "PATH: $PATH"
+            echo "HOME: $HOME"
+            ls -la "$HOME/go/bin/" 2>/dev/null || echo "$HOME/go/bin/ does not exist"
+            ls -la "/home/runner/go/bin/" 2>/dev/null || echo "/home/runner/go/bin/ does not exist"
             exit 1
           fi
-          echo "PASS: git config was correctly set for private module access"
