@@ -1,0 +1,26 @@
+name: Test github-token-for-downloading-private-go-modules
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          # Provide a fake token to trigger the git config URL rewriting step.
+          # No testing-type or release-dir means no other steps run.
+          github-token-for-downloading-private-go-modules: "fake-private-token"
+          task-install: "no"
+      - name: Assert git config was set for private modules
+        run: |
+          echo "Checking git config for private module URL rewriting..."
+          GIT_CONFIG=$(git config --global --get-regexp "url\." 2>/dev/null || true)
+          echo "git config url entries: $GIT_CONFIG"
+          if echo "$GIT_CONFIG" | grep -q "github.com"; then
+            echo "PASS: git config URL rewriting is set for github.com"
+          else
+            echo "FAIL: expected git config URL rewriting for github.com to be set"
+            exit 1
+          fi

@@ -30,7 +30,7 @@ jobs:
             echo "FAIL: binary is not executable"
             exit 1
           fi
-          echo "PASS: binary built successfully with build tags"
+          echo "PASS: binary built successfully with release-build-tags"
       - name: Assert compute_asset_name output includes build tags
         env:
           ASSET_NAME: ${{ steps.action.outputs.asset_name }}
@@ -48,4 +48,4 @@ jobs:
             echo "FAIL: asset_name does not contain build tag 'integration': $ASSET_NAME"
             exit 1
           fi
-          echo "PASS: asset_name is '$ASSET_NAME'"
+          echo "PASS: asset_name is '$ASSET_NAME' and includes build tags"
