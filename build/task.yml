@@ -252,9 +252,12 @@ tasks:
       - |
         if ! helm version | grep -q "{{.HELM_VERSION}}"; then
           echo "Installing Helm version {{.HELM_VERSION}}..."
+          HELM_INSTALL_SCRIPT=$(mktemp)
           curl \
-            -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 |\
-            bash -s -- --version {{.HELM_VERSION}}
+            -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 \
+            -o "$HELM_INSTALL_SCRIPT"
+          bash "$HELM_INSTALL_SCRIPT" --version {{.HELM_VERSION}}
+          rm -f "$HELM_INSTALL_SCRIPT"
         fi
     silent: true
   golang-log:
@@ -273,9 +276,12 @@ tasks:
       - |
         if ! golangci-lint --version | grep -q "has version {{.GOLANGCI_LINT_VERSION_WITHOUT_V_PREFIX}}"; then
           echo "Installing golangci-lint version {{.GOLANGCI_LINT_VERSION_WITHOUT_V_PREFIX}}..."
+          GOLANGCI_INSTALL_SCRIPT=$(mktemp)
           curl \
-            -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/main/install.sh |\
-            sh -s -- -b {{.GOBIN}} {{.GOLANGCI_LINT_VERSION}}
+            -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/main/install.sh \
+            -o "$GOLANGCI_INSTALL_SCRIPT"
+          sh "$GOLANGCI_INSTALL_SCRIPT" -b {{.GOBIN}} {{.GOLANGCI_LINT_VERSION}}
+          rm -f "$GOLANGCI_INSTALL_SCRIPT"
         fi
     silent: true
   golangci-lint-fmt:

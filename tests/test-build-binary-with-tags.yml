@@ -14,7 +14,7 @@ jobs:
           release-architecture: "amd64"
           release-os: "linux"
           release-type: "binary"
-          release-build-tags: "integration"
+          release-build-tags: "netgo"
           # go-version-file defaults to go.mod which exists in the action repo root
       - name: Assert binary was built with build tags
         run: |
@@ -30,8 +30,15 @@ jobs:
             echo "FAIL: binary is not executable"
             exit 1
           fi
-          echo "PASS: binary built successfully with release-build-tags"
-      - name: Assert compute_asset_name output includes build tags
+          echo "Running binary..."
+          OUTPUT=$("$BINARY_PATH" 2>&1)
+          echo "output: $OUTPUT"
+          if [ "$OUTPUT" != "Hello, World!" ]; then
+            echo "FAIL: unexpected output: $OUTPUT"
+            exit 1
+          fi
+          echo "PASS: binary built with release-build-tags and runs correctly"
+      - name: Assert compute_asset_name includes build tags
         env:
           ASSET_NAME: ${{ steps.action.outputs.asset_name }}
         run: |
@@ -44,8 +51,8 @@ jobs:
             echo "FAIL: asset_name does not contain 'hello': $ASSET_NAME"
             exit 1
           fi
-          if ! echo "$ASSET_NAME" | grep -q "integration"; then
-            echo "FAIL: asset_name does not contain build tag 'integration': $ASSET_NAME"
+          if ! echo "$ASSET_NAME" | grep -q "netgo"; then
+            echo "FAIL: asset_name does not contain build tag 'netgo': $ASSET_NAME"
             exit 1
           fi
           echo "PASS: asset_name is set to '$ASSET_NAME' and includes build tags"

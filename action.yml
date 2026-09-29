@@ -149,9 +149,9 @@ runs:
     - run: |
         git config --global "url.https://${GITHUB_TOKEN_FOR_PRIVATE_MODULES}@github.com/.insteadOf" https://github.com/
       shell: bash
-      if: ${{ inputs.github-token-for-downloading-private-go-modules != '' }}
       env:
         GITHUB_TOKEN_FOR_PRIVATE_MODULES: ${{ inputs.github-token-for-downloading-private-go-modules }}
+      if: ${{ inputs.github-token-for-downloading-private-go-modules != '' }}
     - if: |
         inputs.release-dir != '' ||
         inputs.testing-type == 'component' ||

@@ -1,4 +1,4 @@
-name: Test lint inputs (build-tags and golangci-timeout)
+name: Test integration inputs (test-timeout)
 on:
   workflow_dispatch:
 jobs:
@@ -9,10 +9,9 @@ jobs:
       - id: action
         uses: .
         with:
-          # Pass build-tags and golangci-timeout without triggering lint
+          # Pass test-timeout without triggering integration testing
           # (no testing-type set, so all conditional steps are skipped)
-          build-tags: "component"
-          golangci-timeout: "5m"
+          test-timeout: "30m"
       - name: Assert action completed without error
         run: |
-          echo "PASS: action completed successfully with build-tags and golangci-timeout inputs set"
+          echo "PASS: action completed successfully with test-timeout input set"
