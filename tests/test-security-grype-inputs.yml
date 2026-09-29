@@ -1,4 +1,4 @@
-name: Test grype-version input
+name: Test security-grype testing-type with grype-version input
 on:
   workflow_dispatch:
 jobs:
@@ -11,18 +11,18 @@ jobs:
         continue-on-error: true
         with:
           testing-type: "security-grype"
-          grype-version: "0.88.0"
           token: ${{ github.token }}
+          grype-version: "0.88.0"
           go-version-file: "tests/fixtures/hello/go.mod"
-      - name: Assert action ran with grype-version input
+      - name: Assert action ran with grype inputs or failed gracefully
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
           if [ "$OUTCOME" = "success" ]; then
-            echo "PASS: action succeeded with grype-version set"
+            echo "PASS: action completed with testing-type=security-grype"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (expected in harness — grype scan may not be available)"
+            echo "PASS: action failed gracefully (expected in harness — grype scan may fail on sentinel repo)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1

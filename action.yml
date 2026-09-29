@@ -146,12 +146,12 @@ runs:
 
         echo "verifying that task can be found and run..."
         task --version
-    - shell: bash
+    - run: |
+        git config --global url."https://${GITHUB_TOKEN_FOR_PRIVATE_MODULES}@github.com/".insteadOf https://github.com/
+      shell: bash
       if: ${{ inputs.github-token-for-downloading-private-go-modules != '' }}
       env:
-        GH_TOKEN_PRIVATE_MODULES: ${{ inputs.github-token-for-downloading-private-go-modules }}
-      run: |
-        git config --global url.https://"${GH_TOKEN_PRIVATE_MODULES}"@github.com/.insteadOf https://github.com/
+        GITHUB_TOKEN_FOR_PRIVATE_MODULES: ${{ inputs.github-token-for-downloading-private-go-modules }}
     - if: |
         inputs.release-dir != '' ||
         inputs.testing-type == 'component' ||
@@ -335,18 +335,14 @@ runs:
         RELEASE_ARCHITECTURE: ${{ inputs.release-architecture }}
         RELEASE_BUILD_TAGS: ${{ inputs.release-build-tags }}
       run: |
-        safe_app_name=$(printf '%s' "${RELEASE_APPLICATION_NAME}" | tr -d '\n\r')
-        safe_ref_name=$(printf '%s' "${REF_NAME}" | tr -d '\n\r')
-        safe_os=$(printf '%s' "${RELEASE_OS}" | tr -d '\n\r')
-        safe_arch=$(printf '%s' "${RELEASE_ARCHITECTURE}" | tr -d '\n\r')
-        safe_build_tags=$(printf '%s' "${RELEASE_BUILD_TAGS}" | tr -d '\n\r')
-        ASSET_NAME_BASE="${safe_app_name}-${safe_ref_name}-${safe_os}-${safe_arch}"
-        if [ -n "${safe_build_tags}" ]; then
-          ASSET_NAME="${ASSET_NAME_BASE}-${safe_build_tags}"
+        ASSET_NAME_BASE="${RELEASE_APPLICATION_NAME}-${REF_NAME}-${RELEASE_OS}-${RELEASE_ARCHITECTURE}"
+        if [ -n "${RELEASE_BUILD_TAGS}" ]; then
+          ASSET_NAME="${ASSET_NAME_BASE}-${RELEASE_BUILD_TAGS}"
         else
           ASSET_NAME="${ASSET_NAME_BASE}"
         fi
-        echo "asset_name=${ASSET_NAME}" >> "$GITHUB_OUTPUT"
+        safe_asset_name=$(printf '%s' "${ASSET_NAME}" | tr -d '\n\r')
+        echo "asset_name=${safe_asset_name}" >> "$GITHUB_OUTPUT"
     #
     # Upload binaries to release
     #

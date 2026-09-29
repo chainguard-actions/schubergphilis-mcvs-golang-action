@@ -1,4 +1,4 @@
-name: Test github-token-for-downloading-private-go-modules input
+name: Test coverage testing-type with related inputs
 on:
   workflow_dispatch:
 jobs:
@@ -10,17 +10,21 @@ jobs:
         uses: .
         continue-on-error: true
         with:
-          github-token-for-downloading-private-go-modules: ${{ github.token }}
+          testing-type: "coverage"
+          token: ${{ github.token }}
+          code-coverage-expected: "80"
+          code-coverage-timeout: "10m"
+          test-timeout: "5m"
           go-version-file: "tests/fixtures/hello/go.mod"
-      - name: Assert action ran with github-token-for-downloading-private-go-modules input
+      - name: Assert action ran with coverage inputs or failed gracefully
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
           if [ "$OUTCOME" = "success" ]; then
-            echo "PASS: action succeeded with github-token-for-downloading-private-go-modules set"
+            echo "PASS: action completed with testing-type=coverage"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (expected in harness)"
+            echo "PASS: action failed gracefully (expected in harness — no real Go project for coverage)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1

@@ -1,4 +1,4 @@
-name: Test build binary with release-build-tags
+name: Test build binary with release-build-tags input
 on:
   workflow_dispatch:
 jobs:
@@ -17,7 +17,7 @@ jobs:
           release-type: "binary"
           release-build-tags: "lambda.norpc"
           go-version-file: "tests/fixtures/hello/go.mod"
-      - name: Assert asset_name output includes build tags or action failed gracefully
+      - name: Assert asset_name includes build tags or action failed gracefully
         env:
           ASSET_NAME: ${{ steps.action.outputs.asset_name }}
           OUTCOME: ${{ steps.action.outcome }}
@@ -29,11 +29,11 @@ jobs:
               echo "FAIL: action succeeded but asset_name output is empty"
               exit 1
             fi
-            # When release-build-tags is set, the asset name should include the build tags
+            # When release-build-tags is set, the asset name should include the tag
             if echo "$ASSET_NAME" | grep -q "lambda.norpc"; then
-              echo "PASS: asset_name includes build tags: '$ASSET_NAME'"
+              echo "PASS: asset_name includes build tag: $ASSET_NAME"
             else
-              echo "FAIL: expected asset_name to include 'lambda.norpc' but got: '$ASSET_NAME'"
+              echo "FAIL: expected asset_name to contain 'lambda.norpc' but got: $ASSET_NAME"
               exit 1
             fi
           elif [ "$OUTCOME" = "failure" ]; then
