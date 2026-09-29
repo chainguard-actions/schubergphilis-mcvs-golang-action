@@ -1,4 +1,4 @@
-name: Test release build tags input (release-build-tags)
+name: Test release-build-tags input
 on:
   workflow_dispatch:
 jobs:
@@ -16,8 +16,7 @@ jobs:
           release-architecture: "amd64"
           release-os: "linux"
           release-type: "binary"
-          release-build-tags: "integration"
-          token: ${{ github.token }}
+          release-build-tags: "lambda.norpc"
       - name: Assert binary built with build tags or action failed gracefully
         env:
           OUTCOME: ${{ steps.action.outcome }}

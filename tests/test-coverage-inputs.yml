@@ -1,4 +1,4 @@
-name: Test integration test-timeout input
+name: Test coverage inputs (code-coverage-timeout, testing-type, token)
 on:
   workflow_dispatch:
 jobs:
@@ -11,18 +11,19 @@ jobs:
         continue-on-error: true
         with:
           go-version-file: "tests/fixtures/go.mod"
-          testing-type: "integration"
+          testing-type: "coverage"
+          code-coverage-expected: "80"
+          code-coverage-timeout: "5m"
           token: ${{ github.token }}
-          test-timeout: "10m"
-      - name: Assert action ran with test-timeout input
+      - name: Assert action ran with coverage inputs
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
           if [ "$OUTCOME" = "success" ]; then
-            echo "PASS: integration action succeeded"
+            echo "PASS: action succeeded with coverage inputs"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (integration tests require project Taskfile/test setup)"
+            echo "PASS: action failed gracefully (coverage task not available in harness)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1
