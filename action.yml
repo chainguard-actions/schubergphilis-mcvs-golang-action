@@ -147,11 +147,11 @@ runs:
         echo "verifying that task can be found and run..."
         task --version
     - run: |
-        git config --global "url.https://${GH_TOKEN_PRIVATE_MODULES}@github.com/.insteadOf" https://github.com/
+        git config --global "url.https://${GITHUB_TOKEN_FOR_PRIVATE_MODULES}@github.com/.insteadOf" https://github.com/
       shell: bash
-      if: ${{ inputs.github-token-for-downloading-private-go-modules != '' }}
       env:
-        GH_TOKEN_PRIVATE_MODULES: ${{ inputs.github-token-for-downloading-private-go-modules }}
+        GITHUB_TOKEN_FOR_PRIVATE_MODULES: ${{ inputs.github-token-for-downloading-private-go-modules }}
+      if: ${{ inputs.github-token-for-downloading-private-go-modules != '' }}
     - if: |
         inputs.release-dir != '' ||
         inputs.testing-type == 'component' ||
@@ -309,7 +309,7 @@ runs:
         GOOS: ${{ inputs.release-os }}
         SOURCE_FILE: ${{ inputs.release-dir }}/main.go
         RELEASE_BUILD_TAGS: ${{ inputs.release-build-tags }}
-        GITHUB_REF_NAME: ${{ github.ref_name }}
+        REF_NAME: ${{ github.ref_name }}
       run: |
         mkdir -p "${BUILD_DIR}"
         if [ -n "${RELEASE_BUILD_TAGS}" ]; then
@@ -317,9 +317,8 @@ runs:
             -tags "${RELEASE_BUILD_TAGS}" \
             -o "${BUILD_DIR}/main" "${SOURCE_FILE}"
         else
-          safe_ref_name=$(printf '%s' "${GITHUB_REF_NAME}" | tr -d "'\n\r")
           go build \
-            -ldflags="-X 'main.Version=${safe_ref_name}'" \
+            -ldflags="-X 'main.Version=${REF_NAME}'" \
             -o "${BUILD_DIR}/main" "${SOURCE_FILE}"
         fi
     #
@@ -331,13 +330,13 @@ runs:
       shell: bash
       env:
         RELEASE_APPLICATION_NAME: ${{ inputs.release-application-name }}
-        GITHUB_REF_NAME: ${{ github.ref_name }}
+        REF_NAME: ${{ github.ref_name }}
         RELEASE_OS: ${{ inputs.release-os }}
         RELEASE_ARCHITECTURE: ${{ inputs.release-architecture }}
         RELEASE_BUILD_TAGS: ${{ inputs.release-build-tags }}
       run: |
         safe_app_name=$(printf '%s' "${RELEASE_APPLICATION_NAME}" | tr -d '\n\r')
-        safe_ref_name=$(printf '%s' "${GITHUB_REF_NAME}" | tr -d '\n\r')
+        safe_ref_name=$(printf '%s' "${REF_NAME}" | tr -d '\n\r')
         safe_os=$(printf '%s' "${RELEASE_OS}" | tr -d '\n\r')
         safe_arch=$(printf '%s' "${RELEASE_ARCHITECTURE}" | tr -d '\n\r')
         safe_build_tags=$(printf '%s' "${RELEASE_BUILD_TAGS}" | tr -d '\n\r')

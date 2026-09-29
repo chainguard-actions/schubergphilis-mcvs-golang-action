@@ -10,28 +10,59 @@
 
 **Harden Agent Version:** `2`
 
-Action **schubergphilis--mcvs-golang-action/v3.12.2** was hardened automatically. 13 finding(s) were identified and resolved across 3 iteration(s).
+Action **schubergphilis--mcvs-golang-action/v3.12.2** was hardened automatically. 16 finding(s) were identified and resolved across 2 iteration(s).
 
 ## Findings Fixed
 
 ### script-injection (severity: high)
 
-Rule (a) violation: Multiple `run:` blocks in action.yml directly interpolate `${{ ... }}` expressions inside shell command strings, enabling script injection. (1) The 'install task' step uses `${{ inputs.task-version }}` directly in grep, echo, and `go install` commands (e.g. `grep -q "Task version: v${{ inputs.task-version }}"`). (2) An unnamed step uses `${{ inputs.github-token-for-downloading-private-go-modules }}` directly inside a `git config` URL. (3) The 'Build binary' step uses `${{ inputs.release-build-tags }}` and `${{ github.ref_name }}` directly in `go build` flags. (4) The 'Compute asset name' step uses `${{ inputs.release-application-name }}`, `${{ github.ref_name }}`, `${{ inputs.release-os }}`, `${{ inputs.release-architecture }}`, and `${{ inputs.release-build-tags }}` directly in shell variable assignments. All of these values are workflow-controllable and must be passed via `env:` and then double-quoted in the shell, never interpolated directly.
+Rule (a) violation — the 'install task' run: block directly interpolates ${{ inputs.task-version }} into shell commands without going through an env: variable. An attacker-controlled value is substituted by the YAML template engine before the shell ever sees the string, enabling command injection. Offending lines:
+  `if ! task --version | grep -q "Task version: v${{ inputs.task-version }}"`
+  `major_version=$(echo "${{ inputs.task-version }}" | sed -E 's/^([0-9]+).*/\1/')`
+  `go install github.com/go-task/task/v${major_version}/cmd/task@v${{ inputs.task-version }}`
 
 Locations:
 
-- `action.yml:108`
-- `action.yml:114`
+- `action.yml:119`
+
+### script-injection (severity: high)
+
+Rule (a) violation — an unnamed run: block directly interpolates ${{ inputs.github-token-for-downloading-private-go-modules }} into a git config URL shell command. The token value is substituted by the YAML template engine before the shell parses the command, enabling injection of arbitrary git config arguments or shell metacharacters. Offending line:
+  `git config --global url.https://${{ inputs.github-token-for-downloading-private-go-modules }}@github.com/.insteadOf https://github.com/`
+
+Locations:
+
+- `action.yml:125`
+
+### script-injection (severity: high)
+
+Rule (a) violation — the 'Build binary' run: block directly interpolates ${{ inputs.release-build-tags }} into a -tags flag and ${{ github.ref_name }} into a -ldflags string inside shell commands. These values are substituted by the YAML template engine before the shell parses the command, enabling injection of arbitrary shell metacharacters or compiler flags. Offending lines:
+  `if [ -n "${{ inputs.release-build-tags }}" ]`
+  `-tags "${{ inputs.release-build-tags }}"`
+  `-ldflags="-X 'main.Version=${{ github.ref_name }}'"` 
+
+Locations:
+
 - `action.yml:232`
-- `action.yml:248`
+
+### script-injection (severity: high)
+
+Rule (a) violation — the 'Compute asset name' run: block directly interpolates ${{ inputs.release-application-name }}, ${{ github.ref_name }}, ${{ inputs.release-os }}, ${{ inputs.release-architecture }}, and ${{ inputs.release-build-tags }} into shell variable assignments. These values are substituted by the YAML template engine before the shell parses the script, enabling injection of arbitrary shell metacharacters. Offending lines:
+  `ASSET_NAME_BASE="${{ inputs.release-application-name }}-${{ github.ref_name }}-${{ inputs.release-os }}-${{ inputs.release-architecture }}"`
+  `if [ -n "${{ inputs.release-build-tags }}" ]`
+  `ASSET_NAME="${ASSET_NAME_BASE}-${{ inputs.release-build-tags }}"`
+
+Locations:
+
+- `action.yml:245`
 
 ### github-env-injection (severity: high)
 
-The 'Compute asset name' step writes `asset_name=${ASSET_NAME}` to `$GITHUB_OUTPUT`, where `ASSET_NAME` is constructed directly from `${{ inputs.release-application-name }}`, `${{ github.ref_name }}`, `${{ inputs.release-os }}`, `${{ inputs.release-architecture }}`, and `${{ inputs.release-build-tags }}` via direct shell interpolation. No sanitization (`printf '%s' ... | tr -d '\n\r'`) is applied before the write. An attacker-controlled input containing newlines could inject arbitrary key-value pairs into the GitHub output context.
+The 'Compute asset name' run: block writes `echo "asset_name=${ASSET_NAME}" >> $GITHUB_OUTPUT` where ASSET_NAME is constructed by directly interpolating multiple untrusted inputs (${{ inputs.release-application-name }}, ${{ github.ref_name }}, ${{ inputs.release-os }}, ${{ inputs.release-architecture }}, ${{ inputs.release-build-tags }}) into the shell script without sanitization. No `printf '%s' ... | tr -d '\n\r'` step is applied before the write, so a newline embedded in any of these values could inject additional key=value pairs into GITHUB_OUTPUT.
 
 Locations:
 
-- `action.yml:248`
+- `action.yml:251`
 
 ### static-inline-injection (severity: high)
 
@@ -125,33 +156,23 @@ Locations:
 
 ### Iteration 1
 
-**Fixes applied:** script-injection, github-env-injection, static-inline-injection
+**Fixes applied:** script-injection, static-inline-injection, github-env-injection
 
 **Notes:**
 
-Fixed all script injection and GitHub env injection findings in action.yml:
-1. 'install task' step: moved ${{ inputs.task-version }} into env: TASK_VERSION; shell now uses ${TASK_VERSION} in grep, echo, and go install commands.
-2. Unnamed git config step: moved ${{ inputs.github-token-for-downloading-private-go-modules }} into env: GH_TOKEN_PRIVATE_MODULES; shell uses ${GH_TOKEN_PRIVATE_MODULES} in the git config URL.
-3. 'Build binary' step: moved ${{ inputs.release-build-tags }} into env: RELEASE_BUILD_TAGS and ${{ github.ref_name }} into env: GITHUB_REF_NAME; shell uses ${RELEASE_BUILD_TAGS} and ${GITHUB_REF_NAME}.
-4. 'Compute asset name' step: moved all 5 expressions (${{ inputs.release-application-name }}, ${{ github.ref_name }}, ${{ inputs.release-os }}, ${{ inputs.release-architecture }}, ${{ inputs.release-build-tags }}) into env: block; each value is sanitized with printf '%s' ... | tr -d '\n\r' before being used in the GITHUB_OUTPUT write, preventing newline injection.
+Fixed all script-injection and github-env-injection findings in action.yml:
+1. 'install task' step: moved ${{ inputs.task-version }} to TASK_VERSION env var; shell script now uses ${TASK_VERSION} throughout.
+2. git config step (private modules): moved ${{ inputs.github-token-for-downloading-private-go-modules }} to GITHUB_TOKEN_FOR_PRIVATE_MODULES env var.
+3. 'Build binary' step: added RELEASE_BUILD_TAGS=${{ inputs.release-build-tags }} and REF_NAME=${{ github.ref_name }} to the existing env: block; shell script uses ${RELEASE_BUILD_TAGS} and ${REF_NAME}.
+4. 'Compute asset name' step: added env: block with RELEASE_APPLICATION_NAME, REF_NAME, RELEASE_OS, RELEASE_ARCHITECTURE, RELEASE_BUILD_TAGS; each value is sanitized with 'printf "%s" | tr -d "\n\r"' before use, and the GITHUB_OUTPUT write uses the sanitized values to prevent newline injection.
 
 ### Iteration 2
 
-**Fixes applied:** script-injection
+**Fixes applied:** script-injection, script-injection
 
 **Notes:**
 
 Fixed two script-injection findings in hardened/action/action.yml:
-
-1. Line 128 ('install task' step): Wrapped the go install module path in double quotes — `go install "github.com/go-task/task/v${major_version}/cmd/task@v${TASK_VERSION}"` — so that shell metacharacters in the caller-controlled TASK_VERSION input cannot be interpreted by the shell.
-
-2. Line 244 ('Build binary' step): Added sanitization of GITHUB_REF_NAME before embedding it inside single quotes in the -ldflags argument. A new `safe_ref_name` variable strips single quotes and newlines via `printf '%s' "${GITHUB_REF_NAME}" | tr -d "'\n\r"`, preventing a ref name like `foo'$(evil)'` from breaking out of the single-quote context.
-
-### Iteration 3
-
-**Fixes applied:** script-injection
-
-**Notes:**
-
-Fixed the unquoted shell expansion in the git config step at action.yml line 133. Wrapped the `url.https://${GH_TOKEN_PRIVATE_MODULES}@github.com/.insteadOf` argument in double quotes so that any shell metacharacters in the token value are not interpreted by the shell before being passed to `git config`. The token is already safely sourced via the step's `env:` block.
+1. Line 107 (install task step): Added double-quotes around the `go install` argument — `"github.com/go-task/task/v${major_version}/cmd/task@v${TASK_VERSION}"` — so that both `${major_version}` and `${TASK_VERSION}` are properly quoted and cannot be exploited via shell metacharacters in the caller-supplied `task-version` input.
+2. Line 112 (git config step): Added double-quotes around the URL key argument — `"url.https://${GITHUB_TOKEN_FOR_PRIVATE_MODULES}@github.com/.insteadOf"` — so that the `${GITHUB_TOKEN_FOR_PRIVATE_MODULES}` variable (sourced from the caller-controlled `github-token-for-downloading-private-go-modules` input) cannot inject shell metacharacters.
 
