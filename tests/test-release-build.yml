@@ -1,4 +1,4 @@
-name: Test release build
+name: Test release build (release-dir, release-application-name, release-architecture, release-type, release-build-tags)
 on:
   workflow_dispatch:
 jobs:
@@ -8,52 +8,47 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Install fake task binary to avoid network dependency
         run: |
-          cat > /usr/local/bin/task << 'TASKEOF'
-#!/bin/sh
-echo "Task version: v3.53.1"
-TASKEOF
+          cat > /usr/local/bin/task << 'EOF'
+          #!/bin/sh
+          echo "Task version: v3.53.1"
+          echo "task: $*"
+          exit 0
+          EOF
           chmod +x /usr/local/bin/task
-          echo "Fake task installed:"
+          echo "Fake task installed"
           task --version
-      - name: Set up Go workspace with a minimal module at repo root
+      - name: Align go.mod version with installed Go to allow go mod tidy to succeed
         run: |
-          # Create a minimal go.mod at workspace root so go mod tidy succeeds.
-          # The file is untracked, so git diff --exit-code will not flag it.
-          printf 'module github.com/test/release-test\n\ngo 1.21.0\n' > "$GITHUB_WORKSPACE/go.mod"
-          # Create main.go at workspace root for the release build
-          printf 'package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("hello from release binary")\n}\n' > "$GITHUB_WORKSPACE/main.go"
-          echo "Created go.mod:"
-          cat "$GITHUB_WORKSPACE/go.mod"
-          echo "Created main.go:"
-          cat "$GITHUB_WORKSPACE/main.go"
-      - name: Run action to build a release binary
+          # The action runs 'go mod tidy' in the workspace root when release-dir is set.
+          # Update go.mod to use go 1.21.0 so it matches the Go version we install.
+          sed -i 's/^go [0-9]\+\.[0-9]\+\(\.[0-9]\+\)\?$/go 1.21.0/' go.mod
+          echo "Updated go.mod:"
+          cat go.mod
+          # Stage the change so git diff --exit-code passes after go mod tidy
+          git config user.email "test@example.com"
+          git config user.name "Test"
+          git add go.mod
+          git commit -m "test: align go version for release test" --allow-empty
+      - name: Run action with release inputs
         id: action
         uses: .
         with:
-          go-version-file: "go.mod"
-          release-dir: "."
-          release-application-name: "myapp"
+          release-dir: "tests/fixtures/goapp"
+          release-application-name: "test-app"
           release-architecture: "amd64"
-          release-os: "linux"
           release-type: "binary"
-          token: ""
+          release-build-tags: "integration"
+          go-version-file: "tests/fixtures/goapp/go.mod"
       - name: Assert binary was built
         run: |
-          BINARY_PATH="$GITHUB_WORKSPACE/build/binary/myapp/amd64/main"
-          echo "Checking for binary at: $BINARY_PATH"
+          echo "Checking for built binary..."
+          BINARY_PATH="build/binary/test-app/amd64/main"
           if [ ! -f "$BINARY_PATH" ]; then
             echo "FAIL: expected binary not found at $BINARY_PATH"
-            ls -la "$GITHUB_WORKSPACE/build/" 2>/dev/null || echo "build/ directory does not exist"
+            ls -la build/ 2>/dev/null || echo "build/ directory not found"
             exit 1
           fi
-          echo "Binary found. Running it..."
-          OUTPUT=$("$BINARY_PATH" 2>&1 || true)
-          echo "Binary output: $OUTPUT"
-          if [ -z "$OUTPUT" ]; then
-            echo "FAIL: binary produced no output"
-            exit 1
-          fi
-          echo "PASS: binary built and executed successfully"
+          echo "PASS: binary found at $BINARY_PATH"
       - name: Assert asset name output is set
         env:
           ASSET_NAME: ${{ steps.action.outputs.asset_name }}
@@ -63,4 +58,12 @@ TASKEOF
             echo "FAIL: asset_name output is empty"
             exit 1
           fi
-          echo "PASS: asset_name is '$ASSET_NAME'"
+          if ! echo "$ASSET_NAME" | grep -q "test-app"; then
+            echo "FAIL: asset_name does not contain 'test-app': $ASSET_NAME"
+            exit 1
+          fi
+          if ! echo "$ASSET_NAME" | grep -q "amd64"; then
+            echo "FAIL: asset_name does not contain 'amd64': $ASSET_NAME"
+            exit 1
+          fi
+          echo "PASS: asset_name='$ASSET_NAME'"

@@ -309,7 +309,7 @@ runs:
         GOOS: ${{ inputs.release-os }}
         SOURCE_FILE: ${{ inputs.release-dir }}/main.go
         RELEASE_BUILD_TAGS: ${{ inputs.release-build-tags }}
-        RELEASE_REF_NAME: ${{ github.ref_name }}
+        GITHUB_REF_NAME: ${{ github.ref_name }}
       run: |
         mkdir -p "${BUILD_DIR}"
         if [ -n "${RELEASE_BUILD_TAGS}" ]; then
@@ -318,7 +318,7 @@ runs:
             -o "${BUILD_DIR}/main" "${SOURCE_FILE}"
         else
           go build \
-            -ldflags="-X 'main.Version=${RELEASE_REF_NAME}'" \
+            -ldflags="-X 'main.Version=${GITHUB_REF_NAME}'" \
             -o "${BUILD_DIR}/main" "${SOURCE_FILE}"
         fi
     #
@@ -330,19 +330,23 @@ runs:
       shell: bash
       env:
         RELEASE_APPLICATION_NAME: ${{ inputs.release-application-name }}
-        RELEASE_REF_NAME: ${{ github.ref_name }}
+        GITHUB_REF_NAME: ${{ github.ref_name }}
         RELEASE_OS: ${{ inputs.release-os }}
         RELEASE_ARCHITECTURE: ${{ inputs.release-architecture }}
         RELEASE_BUILD_TAGS: ${{ inputs.release-build-tags }}
       run: |
-        ASSET_NAME_BASE="${RELEASE_APPLICATION_NAME}-${RELEASE_REF_NAME}-${RELEASE_OS}-${RELEASE_ARCHITECTURE}"
-        if [ -n "${RELEASE_BUILD_TAGS}" ]; then
-          ASSET_NAME="${ASSET_NAME_BASE}-${RELEASE_BUILD_TAGS}"
+        safe_app_name=$(printf '%s' "${RELEASE_APPLICATION_NAME}" | tr -d '\n\r')
+        safe_ref_name=$(printf '%s' "${GITHUB_REF_NAME}" | tr -d '\n\r')
+        safe_os=$(printf '%s' "${RELEASE_OS}" | tr -d '\n\r')
+        safe_arch=$(printf '%s' "${RELEASE_ARCHITECTURE}" | tr -d '\n\r')
+        safe_tags=$(printf '%s' "${RELEASE_BUILD_TAGS}" | tr -d '\n\r')
+        ASSET_NAME_BASE="${safe_app_name}-${safe_ref_name}-${safe_os}-${safe_arch}"
+        if [ -n "${safe_tags}" ]; then
+          ASSET_NAME="${ASSET_NAME_BASE}-${safe_tags}"
         else
           ASSET_NAME="${ASSET_NAME_BASE}"
         fi
-        safe_asset_name=$(printf '%s' "${ASSET_NAME}" | tr -d '\n\r')
-        echo "asset_name=${safe_asset_name}" >> "$GITHUB_OUTPUT"
+        echo "asset_name=${ASSET_NAME}" >> "$GITHUB_OUTPUT"
     #
     # Upload binaries to release
     #

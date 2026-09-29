@@ -1,4 +1,4 @@
-name: Test github-token-for-downloading-private-go-modules
+name: Test github-token-for-downloading-private-go-modules input
 on:
   workflow_dispatch:
 jobs:
@@ -10,15 +10,15 @@ jobs:
         id: action
         uses: .
         with:
-          go-version-file: "tests/fixtures/goapp/go.mod"
           github-token-for-downloading-private-go-modules: ${{ github.token }}
       - name: Assert git config was set for private modules
         run: |
-          echo "Checking git config for private module URL rewrite..."
-          GIT_CONFIG=$(git config --global --list 2>/dev/null || true)
-          echo "git config: $GIT_CONFIG"
-          if echo "$GIT_CONFIG" | grep -q "url.*github.com.*insteadof"; then
+          echo "Checking git config for private module token..."
+          GIT_CONFIG=$(git config --global --get-regexp "url.*insteadOf" 2>/dev/null || true)
+          echo "git config url insteadOf: $GIT_CONFIG"
+          if echo "$GIT_CONFIG" | grep -q "github.com"; then
             echo "PASS: git config for private modules is set"
           else
-            echo "PASS: action completed (git config may not persist across steps, but action ran without error)"
+            echo "FAIL: git config for private modules was not set"
+            exit 1
           fi

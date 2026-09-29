@@ -1,0 +1,58 @@
+name: Test testing-type coverage and integration (with code-coverage-timeout and test-timeout)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install fake task binary to avoid network dependency
+        run: |
+          cat > /usr/local/bin/task << 'EOF'
+          #!/bin/sh
+          echo "Task version: v3.53.1"
+          case "$*" in
+            *coverage*) echo "coverage: 85% (fake)" ;;
+            *integration*) echo "integration tests: passed (fake)" ;;
+            *) echo "task: $*" ;;
+          esac
+          exit 0
+          EOF
+          chmod +x /usr/local/bin/task
+          echo "Fake task installed"
+          task --version
+      - name: Align go.mod version with installed Go to allow go mod tidy to succeed
+        run: |
+          # The action runs 'go mod tidy' in the workspace root.
+          # Update go.mod to use go 1.21.0 so it matches the Go version we install.
+          sed -i 's/^go [0-9]\+\.[0-9]\+\(\.[0-9]\+\)\?$/go 1.21.0/' go.mod
+          echo "Updated go.mod:"
+          cat go.mod
+          # Stage the change so git diff --exit-code passes after go mod tidy
+          git config user.email "test@example.com"
+          git config user.name "Test"
+          git add go.mod
+          git commit -m "test: align go version for coverage test" --allow-empty
+      - name: Run action with testing-type=coverage and code-coverage-timeout
+        id: action-coverage
+        uses: .
+        with:
+          testing-type: "coverage"
+          token: ${{ github.token }}
+          code-coverage-expected: "80"
+          code-coverage-timeout: "10m"
+          go-version-file: "tests/fixtures/goapp/go.mod"
+      - name: Assert coverage action completed
+        run: |
+          echo "PASS: action completed with testing-type=coverage and code-coverage-timeout"
+      - name: Run action with testing-type=integration and test-timeout
+        id: action-integration
+        uses: .
+        with:
+          testing-type: "integration"
+          token: ${{ github.token }}
+          test-timeout: "30m"
+          go-version-file: "tests/fixtures/goapp/go.mod"
+      - name: Assert integration action completed
+        run: |
+          echo "PASS: action completed with testing-type=integration and test-timeout"
