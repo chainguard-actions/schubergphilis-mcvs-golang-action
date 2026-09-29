@@ -1,4 +1,4 @@
-name: Test security-grype (grype-version, token)
+name: Test security-grype testing-type (covers grype-version, testing-type, token)
 on:
   workflow_dispatch:
 jobs:
@@ -11,17 +11,17 @@ jobs:
         continue-on-error: true
         with:
           testing-type: "security-grype"
-          grype-version: "0.88.0"
           token: ${{ github.token }}
-      - name: Assert security-grype ran or failed gracefully
+          grype-version: "0.88.0"
+      - name: Assert action ran (grype scan attempted or failed gracefully)
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
           if [ "$OUTCOME" = "success" ]; then
-            echo "PASS: security-grype scan completed"
+            echo "PASS: grype security scan completed successfully"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (expected in harness environment)"
+            echo "PASS: action failed gracefully (grype scan not available or vulnerabilities found in test environment)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1

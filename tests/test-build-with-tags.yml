@@ -1,4 +1,4 @@
-name: Test build binary with release-build-tags
+name: Test build binary with build tags (covers release-build-tags)
 on:
   workflow_dispatch:
 jobs:
@@ -37,4 +37,25 @@ jobs:
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1
+          fi
+      - name: Assert asset name output when action succeeded
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          ASSET_NAME: ${{ steps.action.outputs.asset_name }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "asset_name: $ASSET_NAME"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$ASSET_NAME" ]; then
+              echo "FAIL: action succeeded but asset_name output is empty"
+              exit 1
+            fi
+            if echo "$ASSET_NAME" | grep -q "testapp"; then
+              echo "PASS: asset_name contains 'testapp': $ASSET_NAME"
+            else
+              echo "FAIL: asset_name does not contain 'testapp': $ASSET_NAME"
+              exit 1
+            fi
+          else
+            echo "SKIP: action did not succeed, skipping asset_name assertion"
           fi

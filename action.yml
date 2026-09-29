@@ -139,6 +139,10 @@ runs:
       env:
         TASK_VERSION: ${{ inputs.task-version }}
       run: |
+        if ! [[ "${TASK_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          echo "ERROR: TASK_VERSION '${TASK_VERSION}' is not a valid semver string" >&2
+          exit 1
+        fi
         if ! task --version | grep -q "Task version: v${TASK_VERSION}"; then
           major_version=$(echo "${TASK_VERSION}" | sed -E 's/^([0-9]+).*/\1/')
           go install "github.com/go-task/task/v${major_version}/cmd/task@v${TASK_VERSION}"
@@ -147,11 +151,11 @@ runs:
         echo "verifying that task can be found and run..."
         task --version
     - run: |
-        git config --global url."https://${PRIVATE_GO_TOKEN}@github.com/".insteadOf "https://github.com/"
+        git config --global url."https://${GITHUB_TOKEN_FOR_PRIVATE_MODULES}@github.com/".insteadOf https://github.com/
       shell: bash
-      if: ${{ inputs.github-token-for-downloading-private-go-modules != '' }}
       env:
-        PRIVATE_GO_TOKEN: ${{ inputs.github-token-for-downloading-private-go-modules }}
+        GITHUB_TOKEN_FOR_PRIVATE_MODULES: ${{ inputs.github-token-for-downloading-private-go-modules }}
+      if: ${{ inputs.github-token-for-downloading-private-go-modules != '' }}
     - if: |
         inputs.release-dir != '' ||
         inputs.testing-type == 'component' ||
@@ -309,8 +313,12 @@ runs:
         GOOS: ${{ inputs.release-os }}
         SOURCE_FILE: ${{ inputs.release-dir }}/main.go
         RELEASE_BUILD_TAGS: ${{ inputs.release-build-tags }}
-        REF_NAME: ${{ github.ref_name }}
+        RELEASE_REF_NAME: ${{ github.ref_name }}
       run: |
+        if ! [[ "${RELEASE_REF_NAME}" =~ ^[a-zA-Z0-9._/+-]+$ ]]; then
+          echo "ERROR: RELEASE_REF_NAME '${RELEASE_REF_NAME}' contains invalid characters" >&2
+          exit 1
+        fi
         mkdir -p "${BUILD_DIR}"
         if [ -n "${RELEASE_BUILD_TAGS}" ]; then
           go build \
@@ -318,7 +326,7 @@ runs:
             -o "${BUILD_DIR}/main" "${SOURCE_FILE}"
         else
           go build \
-            -ldflags="-X 'main.Version=${REF_NAME}'" \
+            -ldflags="-X 'main.Version=${RELEASE_REF_NAME}'" \
             -o "${BUILD_DIR}/main" "${SOURCE_FILE}"
         fi
     #
@@ -330,23 +338,19 @@ runs:
       shell: bash
       env:
         RELEASE_APPLICATION_NAME: ${{ inputs.release-application-name }}
-        REF_NAME: ${{ github.ref_name }}
+        RELEASE_REF_NAME: ${{ github.ref_name }}
         RELEASE_OS: ${{ inputs.release-os }}
         RELEASE_ARCHITECTURE: ${{ inputs.release-architecture }}
         RELEASE_BUILD_TAGS: ${{ inputs.release-build-tags }}
       run: |
-        safe_app=$(printf '%s' "${RELEASE_APPLICATION_NAME}" | tr -d '\n\r')
-        safe_ref=$(printf '%s' "${REF_NAME}" | tr -d '\n\r')
-        safe_os=$(printf '%s' "${RELEASE_OS}" | tr -d '\n\r')
-        safe_arch=$(printf '%s' "${RELEASE_ARCHITECTURE}" | tr -d '\n\r')
-        safe_tags=$(printf '%s' "${RELEASE_BUILD_TAGS}" | tr -d '\n\r')
-        ASSET_NAME_BASE="${safe_app}-${safe_ref}-${safe_os}-${safe_arch}"
-        if [ -n "${safe_tags}" ]; then
-          ASSET_NAME="${ASSET_NAME_BASE}-${safe_tags}"
+        ASSET_NAME_BASE="${RELEASE_APPLICATION_NAME}-${RELEASE_REF_NAME}-${RELEASE_OS}-${RELEASE_ARCHITECTURE}"
+        if [ -n "${RELEASE_BUILD_TAGS}" ]; then
+          ASSET_NAME="${ASSET_NAME_BASE}-${RELEASE_BUILD_TAGS}"
         else
           ASSET_NAME="${ASSET_NAME_BASE}"
         fi
-        echo "asset_name=${ASSET_NAME}" >> "$GITHUB_OUTPUT"
+        safe_asset_name=$(printf '%s' "${ASSET_NAME}" | tr -d '\n\r')
+        echo "asset_name=${safe_asset_name}" >> "$GITHUB_OUTPUT"
     #
     # Upload binaries to release
     #
