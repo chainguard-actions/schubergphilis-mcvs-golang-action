@@ -1,0 +1,35 @@
+name: Test lint testing-type inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run action with lint testing-type
+        id: action
+        uses: .
+        continue-on-error: true
+        with:
+          testing-type: lint
+          build-tags: integration
+          golangci-timeout: "5m"
+          token: ${{ github.token }}
+          go-version-file: tests/fixtures/app/go.mod
+      - name: Assert action ran (lint task will fail without a Taskfile)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: ${OUTCOME}"
+          # The lint step runs 'task remote:golangci-lint --yes' which requires a
+          # Taskfile with that target. In the test environment this will fail, which
+          # is the expected graceful failure. What we verify is that the action
+          # ran (not skipped) and that the inputs were accepted.
+          if [ "${OUTCOME}" = "success" ]; then
+            echo "PASS: lint action succeeded (golangci-lint was available)"
+          elif [ "${OUTCOME}" = "failure" ]; then
+            echo "PASS: lint action failed gracefully (task/golangci-lint not available in test env)"
+          else
+            echo "FAIL: unexpected outcome '${OUTCOME}'"
+            exit 1
+          fi

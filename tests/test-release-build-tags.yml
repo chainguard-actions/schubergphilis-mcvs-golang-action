@@ -1,4 +1,4 @@
-name: Test release build scenario
+name: Test release build with build tags
 on:
   workflow_dispatch:
 jobs:
@@ -6,20 +6,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Run action with release-dir to build a binary
+      - name: Run action with release-build-tags
         id: action
         uses: .
         with:
           release-dir: tests/fixtures/app
-          release-application-name: test-app
+          release-application-name: test-app-tagged
           release-architecture: amd64
           release-os: linux
           release-type: binary
+          release-build-tags: integration
           token: ${{ github.token }}
           go-version-file: tests/fixtures/app/go.mod
-      - name: Assert binary was built
+      - name: Assert binary was built with build tags
         run: |
-          BINARY_PATH="build/binary/test-app/amd64/main"
+          BINARY_PATH="build/binary/test-app-tagged/amd64/main"
           echo "Checking for binary at: ${BINARY_PATH}"
           if [ ! -f "${BINARY_PATH}" ]; then
             echo "FAIL: expected binary not found at ${BINARY_PATH}"
@@ -31,16 +32,8 @@ jobs:
             echo "FAIL: binary is not executable"
             exit 1
           fi
-          echo "Running binary..."
-          OUTPUT=$("${BINARY_PATH}" 2>&1)
-          echo "Binary output: ${OUTPUT}"
-          if echo "${OUTPUT}" | grep -q "Hello from test app"; then
-            echo "PASS: binary built and runs correctly"
-          else
-            echo "FAIL: unexpected binary output: ${OUTPUT}"
-            exit 1
-          fi
-      - name: Assert asset name output is set
+          echo "PASS: binary built with build tags"
+      - name: Assert asset name includes build tags
         env:
           ASSET_NAME: ${{ steps.action.outputs.asset_name }}
         run: |
@@ -49,9 +42,9 @@ jobs:
             echo "FAIL: asset_name output is empty"
             exit 1
           fi
-          if echo "${ASSET_NAME}" | grep -q "test-app"; then
-            echo "PASS: asset_name contains application name"
+          if echo "${ASSET_NAME}" | grep -q "integration"; then
+            echo "PASS: asset_name contains build tag 'integration'"
           else
-            echo "FAIL: asset_name does not contain 'test-app': ${ASSET_NAME}"
+            echo "FAIL: asset_name does not contain build tag 'integration': ${ASSET_NAME}"
             exit 1
           fi

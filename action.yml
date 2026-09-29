@@ -147,7 +147,7 @@ runs:
         echo "verifying that task can be found and run..."
         task --version
     - run: |
-        git config --global url.https://${GITHUB_TOKEN_FOR_PRIVATE_MODULES}@github.com/.insteadOf https://github.com/
+        git config --global "url.https://${GITHUB_TOKEN_FOR_PRIVATE_MODULES}@github.com/.insteadOf" "https://github.com/"
       shell: bash
       if: ${{ inputs.github-token-for-downloading-private-go-modules != '' }}
       env:
@@ -309,7 +309,7 @@ runs:
         GOOS: ${{ inputs.release-os }}
         SOURCE_FILE: ${{ inputs.release-dir }}/main.go
         RELEASE_BUILD_TAGS: ${{ inputs.release-build-tags }}
-        RELEASE_REF_NAME: ${{ github.ref_name }}
+        GITHUB_REF_NAME: ${{ github.ref_name }}
       run: |
         mkdir -p "${BUILD_DIR}"
         if [ -n "${RELEASE_BUILD_TAGS}" ]; then
@@ -318,7 +318,7 @@ runs:
             -o "${BUILD_DIR}/main" "${SOURCE_FILE}"
         else
           go build \
-            -ldflags="-X 'main.Version=${RELEASE_REF_NAME}'" \
+            -ldflags="-X 'main.Version=${GITHUB_REF_NAME}'" \
             -o "${BUILD_DIR}/main" "${SOURCE_FILE}"
         fi
     #
@@ -330,12 +330,12 @@ runs:
       shell: bash
       env:
         RELEASE_APPLICATION_NAME: ${{ inputs.release-application-name }}
-        RELEASE_REF_NAME: ${{ github.ref_name }}
+        GITHUB_REF_NAME: ${{ github.ref_name }}
         RELEASE_OS: ${{ inputs.release-os }}
         RELEASE_ARCHITECTURE: ${{ inputs.release-architecture }}
         RELEASE_BUILD_TAGS: ${{ inputs.release-build-tags }}
       run: |
-        ASSET_NAME_BASE="${RELEASE_APPLICATION_NAME}-${RELEASE_REF_NAME}-${RELEASE_OS}-${RELEASE_ARCHITECTURE}"
+        ASSET_NAME_BASE="${RELEASE_APPLICATION_NAME}-${GITHUB_REF_NAME}-${RELEASE_OS}-${RELEASE_ARCHITECTURE}"
         if [ -n "${RELEASE_BUILD_TAGS}" ]; then
           ASSET_NAME="${ASSET_NAME_BASE}-${RELEASE_BUILD_TAGS}"
         else
