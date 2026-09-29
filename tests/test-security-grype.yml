@@ -1,4 +1,4 @@
-name: Test security grype inputs (testing-type=security-grype, grype-version, token)
+name: Test security-grype testing-type (covers grype-version, token)
 on:
   workflow_dispatch:
 jobs:
@@ -12,20 +12,16 @@ jobs:
         with:
           testing-type: "security-grype"
           token: ${{ github.token }}
-          grype-version: "0.88.0"
-      - name: Assert action ran with security-grype inputs
+          grype-version: "v0.88.0"
+      - name: Assert action ran (security-grype or failed gracefully)
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
-          # The action runs anchore/scan-action with grype.
-          # Under the harness this may fail due to the sentinel repo or
-          # network constraints, but the important thing is that the action
-          # accepted all the inputs and ran (did not fail at startup).
           if [ "$OUTCOME" = "success" ]; then
-            echo "PASS: action completed successfully with security-grype inputs"
+            echo "PASS: security-grype scan completed successfully"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (expected under harness)"
+            echo "PASS: action failed gracefully (expected under act harness)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1

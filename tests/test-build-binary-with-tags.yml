@@ -1,4 +1,4 @@
-name: Test build binary with release-build-tags
+name: Test build binary with release-build-tags (covers release-build-tags)
 on:
   workflow_dispatch:
 jobs:
@@ -15,15 +15,13 @@ jobs:
           release-architecture: "amd64"
           release-os: "linux"
           release-type: "binary"
-          release-build-tags: "integration"
+          release-build-tags: "lambda.norpc"
           go-version-file: "tests/fixtures/go.mod"
-      - name: Assert binary built with build tags or action failed gracefully
+      - name: Assert binary built with tags or action failed gracefully
         env:
           OUTCOME: ${{ steps.action.outcome }}
-          ASSET_NAME: ${{ steps.action.outputs.asset_name }}
         run: |
           echo "outcome: $OUTCOME"
-          echo "asset_name: $ASSET_NAME"
           BINARY_PATH="$GITHUB_WORKSPACE/build/binary/hello/amd64/main"
           if [ "$OUTCOME" = "success" ]; then
             echo "Action succeeded. Checking binary..."
@@ -33,18 +31,31 @@ jobs:
               exit 1
             fi
             echo "Binary found at $BINARY_PATH"
-            # When release-build-tags is set, asset name should include the tag
-            if [ -n "$ASSET_NAME" ] && echo "$ASSET_NAME" | grep -q "integration"; then
-              echo "PASS: asset_name contains build tag 'integration': $ASSET_NAME"
-            elif [ -n "$ASSET_NAME" ]; then
-              echo "PASS: binary built with build tags, asset_name: $ASSET_NAME"
-            else
-              echo "FAIL: action succeeded but asset_name output is empty"
-              exit 1
-            fi
+            echo "PASS: binary built successfully with release-build-tags"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (likely due to go version constraints)"
+            echo "PASS: action failed gracefully (expected under act harness)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1
+          fi
+      - name: Assert asset_name output contains build tags when action succeeded
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          ASSET_NAME: ${{ steps.action.outputs.asset_name }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "asset_name: $ASSET_NAME"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$ASSET_NAME" ]; then
+              echo "FAIL: action succeeded but asset_name output is empty"
+              exit 1
+            fi
+            if echo "$ASSET_NAME" | grep -q "lambda.norpc"; then
+              echo "PASS: asset_name contains build tag 'lambda.norpc': $ASSET_NAME"
+            else
+              echo "FAIL: asset_name does not contain build tag 'lambda.norpc': $ASSET_NAME"
+              exit 1
+            fi
+          else
+            echo "SKIP: action did not succeed, skipping asset_name assertion"
           fi
