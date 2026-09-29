@@ -183,7 +183,7 @@ runs:
     #
     # * Grype
     #
-    - uses: chainguard-actions/anchore-scan-action@771570842dd6dc0aec4a74f6226a15e7178ae83d # v7.4.2
+    - uses: chainguard-actions/anchore-scan-action@b8c21aad14fbcd204257deef464fb9ce525d2a61 # v7.4.2
       if: inputs.token != '' && inputs.testing-type == 'security-grype'
       with:
         grype-version: ${{ inputs.grype-version }}
