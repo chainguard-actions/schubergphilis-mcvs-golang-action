@@ -1,4 +1,4 @@
-name: Test release-build-tags input
+name: Test build binary with release-build-tags
 on:
   workflow_dispatch:
 jobs:
@@ -11,11 +11,12 @@ jobs:
         continue-on-error: true
         with:
           release-dir: tests/fixtures/simple-app
-          release-application-name: simple-app-tagged
+          release-application-name: simple-app
           release-architecture: amd64
           release-os: linux
           release-type: binary
           release-build-tags: integration
+          token: ${{ github.token }}
           go-version-file: tests/fixtures/simple-app/go.mod
       - name: Assert binary built with build tags or action failed gracefully
         env:
@@ -24,7 +25,7 @@ jobs:
         run: |
           echo "action outcome: $OUTCOME"
           echo "asset_name: $ASSET_NAME"
-          BINARY_PATH="$GITHUB_WORKSPACE/build/binary/simple-app-tagged/amd64/main"
+          BINARY_PATH="$GITHUB_WORKSPACE/build/binary/simple-app/amd64/main"
           if [ "$OUTCOME" = "success" ]; then
             echo "Action succeeded, checking binary..."
             if [ ! -f "$BINARY_PATH" ]; then
@@ -42,9 +43,9 @@ jobs:
               echo "FAIL: asset_name does not contain build tag 'integration': $ASSET_NAME"
               exit 1
             fi
-            echo "PASS: binary built with build tags, asset_name='$ASSET_NAME'"
+            echo "PASS: binary built with tags, asset_name is '$ASSET_NAME'"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (go mod tidy or build may have failed in harness)"
+            echo "PASS: action failed gracefully (go mod tidy likely failed due to go version mismatch in workspace root)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1

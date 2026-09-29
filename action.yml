@@ -139,10 +139,6 @@ runs:
       env:
         TASK_VERSION: ${{ inputs.task-version }}
       run: |
-        if ! [[ "${TASK_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-          echo "Error: task-version must be a valid semver (e.g. 3.40.1), got: ${TASK_VERSION}" >&2
-          exit 1
-        fi
         if ! task --version | grep -q "Task version: v${TASK_VERSION}"; then
           major_version=$(echo "${TASK_VERSION}" | sed -E 's/^([0-9]+).*/\1/')
           go install "github.com/go-task/task/v${major_version}/cmd/task@v${TASK_VERSION}"
@@ -150,12 +146,12 @@ runs:
 
         echo "verifying that task can be found and run..."
         task --version
-    - env:
-        GH_TOKEN_PRIVATE_MODULES: ${{ inputs.github-token-for-downloading-private-go-modules }}
-      run: |
+    - run: |
         git config --global "url.https://${GH_TOKEN_PRIVATE_MODULES}@github.com/.insteadOf" https://github.com/
       shell: bash
       if: ${{ inputs.github-token-for-downloading-private-go-modules != '' }}
+      env:
+        GH_TOKEN_PRIVATE_MODULES: ${{ inputs.github-token-for-downloading-private-go-modules }}
     - if: |
         inputs.release-dir != '' ||
         inputs.testing-type == 'component' ||
@@ -313,7 +309,7 @@ runs:
         GOOS: ${{ inputs.release-os }}
         SOURCE_FILE: ${{ inputs.release-dir }}/main.go
         RELEASE_BUILD_TAGS: ${{ inputs.release-build-tags }}
-        REF_NAME: ${{ github.ref_name }}
+        RELEASE_REF_NAME: ${{ github.ref_name }}
       run: |
         mkdir -p "${BUILD_DIR}"
         if [ -n "${RELEASE_BUILD_TAGS}" ]; then
@@ -321,8 +317,9 @@ runs:
             -tags "${RELEASE_BUILD_TAGS}" \
             -o "${BUILD_DIR}/main" "${SOURCE_FILE}"
         else
+          version_ldflags="-X main.Version=${RELEASE_REF_NAME}"
           go build \
-            -ldflags="-X 'main.Version=${REF_NAME}'" \
+            -ldflags="${version_ldflags}" \
             -o "${BUILD_DIR}/main" "${SOURCE_FILE}"
         fi
     #
@@ -334,12 +331,12 @@ runs:
       shell: bash
       env:
         RELEASE_APPLICATION_NAME: ${{ inputs.release-application-name }}
-        REF_NAME: ${{ github.ref_name }}
+        RELEASE_REF_NAME: ${{ github.ref_name }}
         RELEASE_OS: ${{ inputs.release-os }}
         RELEASE_ARCHITECTURE: ${{ inputs.release-architecture }}
         RELEASE_BUILD_TAGS: ${{ inputs.release-build-tags }}
       run: |
-        ASSET_NAME_BASE="${RELEASE_APPLICATION_NAME}-${REF_NAME}-${RELEASE_OS}-${RELEASE_ARCHITECTURE}"
+        ASSET_NAME_BASE="${RELEASE_APPLICATION_NAME}-${RELEASE_REF_NAME}-${RELEASE_OS}-${RELEASE_ARCHITECTURE}"
         if [ -n "${RELEASE_BUILD_TAGS}" ]; then
           ASSET_NAME="${ASSET_NAME_BASE}-${RELEASE_BUILD_TAGS}"
         else

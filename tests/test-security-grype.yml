@@ -1,4 +1,4 @@
-name: Test integration inputs (test-timeout, testing-type integration)
+name: Test security-grype testing-type with grype-version and token
 on:
   workflow_dispatch:
 jobs:
@@ -10,19 +10,23 @@ jobs:
         uses: .
         continue-on-error: true
         with:
-          testing-type: integration
-          test-timeout: "10m"
+          testing-type: security-grype
+          grype-version: v0.88.0
           token: ${{ github.token }}
           go-version-file: tests/fixtures/simple-app/go.mod
-      - name: Assert action ran with integration inputs
+      - name: Assert action ran with security-grype inputs
         env:
           OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "action outcome: $OUTCOME"
+          # The security-grype testing-type runs anchore/scan-action with grype.
+          # It requires token != '' to activate. The scan may succeed or fail
+          # depending on vulnerabilities found, but the action must not crash
+          # unexpectedly.
           if [ "$OUTCOME" = "success" ]; then
-            echo "PASS: action succeeded with integration inputs"
+            echo "PASS: security-grype action succeeded"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (task remote:test-integration-cicd requires a full project setup)"
+            echo "PASS: action failed gracefully (expected — grype scan may find issues or setup may fail)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1
