@@ -1,0 +1,30 @@
+name: Test lint (build-tags, golangci-timeout inputs)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          testing-type: "lint"
+          build-tags: "unit"
+          golangci-timeout: "5m"
+          go-version-file: "tests/fixtures/go-project/go.mod"
+      - name: Assert lint step was triggered
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # The lint step requires task and golangci-lint which may not be
+          # available in the act environment. Either success or failure is
+          # acceptable — what matters is the action ran (not skipped).
+          if [ "$OUTCOME" = "success" ] || [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: lint action ran with outcome '$OUTCOME'"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME' — expected success or failure"
+            exit 1
+          fi

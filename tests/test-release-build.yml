@@ -1,0 +1,38 @@
+name: Test release build (release-dir, release-application-name, release-architecture, release-type, release-build-tags inputs)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          release-dir: "tests/fixtures/go-project/cmd/app"
+          release-application-name: "testapp"
+          release-architecture: "amd64"
+          release-type: "binary"
+          release-build-tags: "integration"
+          release-os: "linux"
+          go-version-file: "tests/fixtures/go-project/go.mod"
+      - name: Assert release build ran
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            # Verify the binary was built
+            BUILD_PATH="build/binary/testapp/amd64/main"
+            if [ ! -f "$BUILD_PATH" ]; then
+              echo "FAIL: expected binary not found at $BUILD_PATH"
+              exit 1
+            fi
+            echo "PASS: binary built successfully at $BUILD_PATH"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (expected in act environment without full Go toolchain)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

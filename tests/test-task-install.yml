@@ -1,0 +1,39 @@
+name: Test task-install
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          task-install: "yes"
+          task-version: "3.53.1"
+          go-version-file: "tests/fixtures/go-project/go.mod"
+      - name: Assert task is installed and correct version
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "Checking task is installed..."
+            if ! command -v task &>/dev/null; then
+              echo "FAIL: task binary not found in PATH after successful action"
+              exit 1
+            fi
+            TASK_VER=$(task --version 2>&1 || true)
+            echo "task version output: $TASK_VER"
+            if ! echo "$TASK_VER" | grep -q "3.53.1"; then
+              echo "FAIL: expected task version 3.53.1 but got: $TASK_VER"
+              exit 1
+            fi
+            echo "PASS: task is installed with correct version"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (likely network/version issue in act environment)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

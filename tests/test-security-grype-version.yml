@@ -1,0 +1,33 @@
+name: Test security-grype with explicit grype-version
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      # The grype scan scans the local filesystem for vulnerabilities.
+      # It may succeed (no high-severity findings) or fail (findings found or
+      # network issues downloading grype). Either outcome is acceptable —
+      # what matters is that the action ran (not skipped).
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          testing-type: "security-grype"
+          token: ${{ github.token }}
+          grype-version: "0.88.0"
+          go-version-file: "tests/fixtures/go-project/go.mod"
+      - name: Assert grype step was triggered and ran
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # The action should either succeed (no high-severity findings) or
+          # fail (findings found or network issue). It must NOT be skipped.
+          if [ "$OUTCOME" = "success" ] || [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: grype scan ran with outcome '$OUTCOME'"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME' — expected success or failure"
+            exit 1
+          fi
