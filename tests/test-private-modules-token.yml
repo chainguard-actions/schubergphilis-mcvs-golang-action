@@ -1,0 +1,26 @@
+name: Test private modules token git config
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run action with private modules token
+        id: action
+        uses: .
+        with:
+          # Providing a dummy token triggers the git config step only.
+          # No testing-type or release-dir is set, so setup-go and go mod tidy
+          # are skipped. Only the git config insteadOf step runs.
+          github-token-for-downloading-private-go-modules: dummy-token-for-test
+      - name: Assert git config was applied
+        run: |
+          echo "Checking git insteadOf config..."
+          CONFIG=$(git config --global --get-all url.https://dummy-token-for-test@github.com/.insteadOf 2>/dev/null || true)
+          echo "config value: $CONFIG"
+          if [ "$CONFIG" != "https://github.com/" ]; then
+            echo "FAIL: expected git insteadOf config to be set to 'https://github.com/', got: '$CONFIG'"
+            exit 1
+          fi
+          echo "PASS: git insteadOf config is correctly set"

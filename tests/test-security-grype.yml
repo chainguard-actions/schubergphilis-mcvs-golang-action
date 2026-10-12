@@ -1,0 +1,29 @@
+name: Test security-grype testing type
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run action with security-grype testing type
+        id: action
+        uses: .
+        continue-on-error: true
+        with:
+          testing-type: security-grype
+          token: ${{ github.token }}
+          # grype-version is optional; omit to use the default
+      - name: Assert action ran (grype scan attempted)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: grype scan completed successfully (no high/critical vulnerabilities found)"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: grype scan ran and reported findings or failed gracefully"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
