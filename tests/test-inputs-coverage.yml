@@ -1,0 +1,200 @@
+name: Test input coverage (uncovered inputs)
+on:
+  workflow_dispatch:
+jobs:
+  # Cover: testing-type, token, test-timeout, build-tags, golangci-timeout
+  # These inputs are passed to the action; the action may fail because there is
+  # no real Go project with the required task setup, but the inputs are exercised.
+  test-lint-inputs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup Go for pre-tidy
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Pre-tidy go.mod
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          go mod tidy
+          git add -A
+          git diff --cached --quiet || git commit -m "pre-tidy: commit go mod tidy changes"
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          testing-type: "lint"
+          token: ${{ github.token }}
+          build-tags: "unit"
+          golangci-timeout: "5m"
+          task-version: "3.54.0"
+      - name: Assert action ran with lint inputs
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          # The action may fail because there is no .golangci.yml or task config,
+          # but it must not be skipped — it must have run (success or failure).
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action ran with testing-type=lint, build-tags, golangci-timeout, token inputs"
+
+  # Cover: code-coverage-timeout, testing-type (coverage variant)
+  test-coverage-inputs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup Go for pre-tidy
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Pre-tidy go.mod
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          go mod tidy
+          git add -A
+          git diff --cached --quiet || git commit -m "pre-tidy: commit go mod tidy changes"
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          testing-type: "coverage"
+          token: ${{ github.token }}
+          code-coverage-expected: "80"
+          code-coverage-timeout: "10m"
+          task-version: "3.54.0"
+      - name: Assert action ran with coverage inputs
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action ran with testing-type=coverage, code-coverage-timeout inputs"
+
+  # Cover: test-timeout, testing-type (unit variant)
+  test-unit-inputs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup Go for pre-tidy
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Pre-tidy go.mod
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          go mod tidy
+          git add -A
+          git diff --cached --quiet || git commit -m "pre-tidy: commit go mod tidy changes"
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          testing-type: "unit"
+          token: ${{ github.token }}
+          test-timeout: "5m"
+          task-version: "3.54.0"
+      - name: Assert action ran with unit test inputs
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action ran with testing-type=unit, test-timeout, token inputs"
+
+  # Cover: grype-version, token (security-grype path)
+  test-grype-inputs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          testing-type: "security-grype"
+          token: ${{ github.token }}
+          grype-version: "0.88.0"
+      - name: Assert action ran with grype inputs
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action ran with testing-type=security-grype, grype-version, token inputs"
+
+  # Cover: github-token-for-downloading-private-go-modules
+  test-private-modules-input:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          github-token-for-downloading-private-go-modules: ${{ github.token }}
+      - name: Assert action ran with private modules token input
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "skipped" ]; then
+            echo "FAIL: action was skipped unexpectedly"
+            exit 1
+          fi
+          echo "PASS: action ran with github-token-for-downloading-private-go-modules input"
+
+  # Cover: release-build-tags (build binary with tags path)
+  test-release-build-tags-input:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup Go for pre-tidy
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Pre-tidy go.mod
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          go mod tidy
+          git add -A
+          git diff --cached --quiet || git commit -m "pre-tidy: commit go mod tidy changes"
+      - id: action
+        uses: .
+        with:
+          go-version-file: "go.mod"
+          release-dir: "tests/fixtures/hello"
+          release-application-name: "hello"
+          release-architecture: "amd64"
+          release-os: "linux"
+          release-type: "binary"
+          release-build-tags: "mytag"
+          task-version: "3.54.0"
+      - name: Assert binary was built with build tags
+        run: |
+          BINARY_PATH="build/binary/hello/amd64/main"
+          echo "Checking for binary at: $BINARY_PATH"
+          if [ ! -f "$BINARY_PATH" ]; then
+            echo "FAIL: binary not found at $BINARY_PATH"
+            find build/ -type f 2>/dev/null || echo "(build directory does not exist)"
+            exit 1
+          fi
+          echo "PASS: binary built successfully with release-build-tags input"

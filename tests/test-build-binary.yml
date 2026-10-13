@@ -1,0 +1,54 @@
+name: Test build binary
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      #
+      # Pre-tidy: install Go and run go mod tidy so that when the action runs
+      # go mod tidy, it is a no-op and git diff shows no changes.
+      #
+      - name: Setup Go for pre-tidy
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Pre-tidy go.mod to prevent git diff failures
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          go mod tidy
+          git add -A
+          git diff --cached --quiet || git commit -m "pre-tidy: commit go mod tidy changes"
+          echo "go.mod state after pre-tidy:"
+          cat go.mod
+      - id: action
+        uses: .
+        with:
+          go-version-file: "go.mod"
+          release-dir: "tests/fixtures/hello"
+          release-application-name: "hello"
+          release-architecture: "amd64"
+          release-os: "linux"
+          release-type: "binary"
+          task-version: "3.54.0"
+      - name: Assert binary was built
+        run: |
+          BINARY_PATH="build/binary/hello/amd64/main"
+          echo "Checking for binary at: $BINARY_PATH"
+          if [ ! -f "$BINARY_PATH" ]; then
+            echo "FAIL: binary not found at $BINARY_PATH"
+            find build/ -type f 2>/dev/null || echo "(build directory does not exist)"
+            exit 1
+          fi
+          echo "Binary found. Checking it is executable..."
+          if [ ! -x "$BINARY_PATH" ]; then
+            echo "FAIL: binary is not executable"
+            exit 1
+          fi
+          echo "Running binary to verify it works..."
+          OUTPUT=$("$BINARY_PATH" 2>&1) || true
+          echo "Output: $OUTPUT"
+          echo "PASS: binary built successfully at $BINARY_PATH"

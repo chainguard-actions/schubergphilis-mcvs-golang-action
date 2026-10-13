@@ -1,0 +1,43 @@
+name: Test task installation
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          task-install: "yes"
+          task-version: "3.54.0"
+      - name: Assert task is installed and runnable
+        run: |
+          echo "Checking that task binary exists in PATH or ~/go/bin..."
+          TASK_BIN=""
+          if command -v task &>/dev/null; then
+            TASK_BIN="$(command -v task)"
+          elif [ -f "$HOME/go/bin/task" ]; then
+            TASK_BIN="$HOME/go/bin/task"
+          fi
+
+          if [ -z "$TASK_BIN" ]; then
+            echo "FAIL: task binary not found in PATH or ~/go/bin"
+            exit 1
+          fi
+
+          echo "task found at: $TASK_BIN"
+          TASK_VERSION=$("$TASK_BIN" --version 2>/dev/null | sed -E 's/.*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          echo "task version: $TASK_VERSION"
+
+          if [ -z "$TASK_VERSION" ]; then
+            echo "FAIL: could not determine task version"
+            exit 1
+          fi
+
+          if [ "$TASK_VERSION" != "3.54.0" ]; then
+            echo "FAIL: expected task version 3.54.0 but got $TASK_VERSION"
+            exit 1
+          fi
+
+          echo "PASS: task $TASK_VERSION is installed correctly"
