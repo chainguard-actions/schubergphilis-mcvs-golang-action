@@ -1,0 +1,31 @@
+name: Test timeout/tuning inputs are accepted when no testing-type runs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run action with tuning inputs but no testing-type
+        id: action
+        uses: .
+        with:
+          build-tags: component
+          code-coverage-timeout: 5m
+          golangci-timeout: "3"
+          grype-version: v0.80.0
+          test-timeout: 10m
+      - name: Assert action completed and did not configure private module rewrite
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected success"
+            exit 1
+          fi
+          if git config --global --get-regexp '^url\..*\.insteadof$' 2>/dev/null | grep -q 'github.com'; then
+            echo "FAIL: unexpected insteadOf rewrite configured"
+            exit 1
+          fi
+          echo "PASS"

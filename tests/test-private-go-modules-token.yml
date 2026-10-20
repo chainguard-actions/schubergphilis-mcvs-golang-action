@@ -1,0 +1,26 @@
+name: Test private go modules token configures git insteadOf
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run action with private go modules token only
+        id: action
+        uses: .
+        with:
+          github-token-for-downloading-private-go-modules: placeholder-module-token
+      - name: Assert git url insteadOf rewrite was configured globally
+        run: |
+          actual=$(git config --global --get "url.https://placeholder-module-token@github.com/.insteadOf" || true)
+          echo "actual: $actual"
+          if [ "$actual" != "https://github.com/" ]; then
+            echo "FAIL: expected insteadOf rewrite to https://github.com/"
+            exit 1
+          fi
+          echo "PASS"
+      - name: Clean up global git config
+        if: always()
+        run: |
+          git config --global --unset-all "url.https://placeholder-module-token@github.com/.insteadOf" || true

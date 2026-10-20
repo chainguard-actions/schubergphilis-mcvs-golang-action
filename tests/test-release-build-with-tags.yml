@@ -1,0 +1,45 @@
+name: Test release build with build tags
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run action with release-dir and release-build-tags set
+        id: action
+        uses: .
+        with:
+          release-dir: "tests/fixtures/cmd"
+          release-application-name: "test-app"
+          release-architecture: "amd64"
+          release-os: "linux"
+          release-type: "binary"
+          release-build-tags: "integration"
+          # go-version-file defaults to go.mod (the action repo's go.mod)
+      - name: Assert binary was built with tags
+        run: |
+          BINARY_PATH="$GITHUB_WORKSPACE/build/binary/test-app/amd64/main"
+          echo "Checking for binary at: $BINARY_PATH"
+          if [ ! -f "$BINARY_PATH" ]; then
+            echo "FAIL: binary not found at $BINARY_PATH"
+            find "$GITHUB_WORKSPACE/build" -type f 2>/dev/null || echo "build dir does not exist"
+            exit 1
+          fi
+          echo "Binary found."
+          echo "PASS: binary built successfully with build tags"
+      - name: Assert asset name includes build tags
+        env:
+          ASSET_NAME: ${{ steps.action.outputs.asset_name }}
+        run: |
+          echo "asset_name: $ASSET_NAME"
+          if [ -z "$ASSET_NAME" ]; then
+            echo "FAIL: asset_name output is empty"
+            exit 1
+          fi
+          if echo "$ASSET_NAME" | grep -q "integration"; then
+            echo "PASS: asset_name includes build tag: $ASSET_NAME"
+          else
+            echo "FAIL: asset_name does not include build tag 'integration': $ASSET_NAME"
+            exit 1
+          fi
