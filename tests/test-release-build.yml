@@ -1,0 +1,53 @@
+name: Test release binary build with build tags
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Prepare a buildable main package and committed go.mod
+        run: |
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          printf 'module github.com/schubergphilis/mcvs-golang-action\n\ngo 1.25.0\n' > go.mod
+          mkdir -p acttestapp
+          cat > acttestapp/main.go <<'EOF'
+          package main
+
+          import "fmt"
+
+          var Version = "dev"
+
+          func main() {
+          	fmt.Println("version:", Version)
+          }
+          EOF
+          git add go.mod acttestapp/main.go
+          git commit -m "act test fixture" --no-verify
+      - id: action
+        uses: .
+        with:
+          release-dir: acttestapp
+          release-application-name: myapp
+          release-architecture: amd64
+          release-os: linux
+          release-type: binary
+          release-build-tags: lambda.norpc
+      - name: Assert binary was built
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          BIN="$GITHUB_WORKSPACE/build/binary/myapp/amd64/main"
+          ls -la "$GITHUB_WORKSPACE/build/binary/myapp/amd64" || true
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected success"
+            exit 1
+          fi
+          if [ ! -f "$BIN" ]; then
+            echo "FAIL: binary not found at $BIN"
+            exit 1
+          fi
+          "$BIN"
+          echo "PASS"

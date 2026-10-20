@@ -1,0 +1,27 @@
+name: Test private go modules token configures git insteadOf
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          github-token-for-downloading-private-go-modules: ${{ github.token }}
+      - name: Assert git insteadOf configured
+        run: |
+          CFG="$(git config --global --get-regexp '^url\..*\.insteadof$' || true)"
+          echo "insteadOf entries: $(echo "$CFG" | sed -E 's#https://[^@]*@#https://***@#')"
+          if ! echo "$CFG" | grep -qE '^url\.https://.+@github\.com/\.insteadof https://github\.com/$'; then
+            echo "FAIL: expected url.https://<token>@github.com/.insteadOf https://github.com/"
+            exit 1
+          fi
+          echo "PASS"
+      - name: Cleanup
+        if: always()
+        run: |
+          git config --global --get-regexp '^url\..*\.insteadof$' | awk '{print $1}' | while read -r k; do
+            git config --global --unset-all "$k" || true
+          done

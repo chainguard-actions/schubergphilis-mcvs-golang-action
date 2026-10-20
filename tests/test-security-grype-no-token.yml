@@ -1,0 +1,27 @@
+name: Test security-grype without token is skipped
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          testing-type: security-grype
+          gta-partial-testing: "false"
+      - name: Assert action succeeded without running grype or task
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected success"
+            exit 1
+          fi
+          if [ -f "$HOME/go/bin/task" ]; then
+            echo "FAIL: task should not have been installed"
+            exit 1
+          fi
+          echo "PASS"
