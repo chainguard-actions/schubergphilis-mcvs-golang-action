@@ -1,0 +1,37 @@
+name: Test tuning inputs with a non-matching testing-type are a no-op
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          testing-type: none
+          build-tags: component
+          golangci-timeout: "5"
+          code-coverage-timeout: "10m"
+          test-timeout: "10m"
+          token: dummy-not-used
+          grype-version: v0.80.0
+      - name: Assert action succeeded without side effects
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected success"
+            exit 1
+          fi
+          if [ -n "$(git status --porcelain -- go.mod go.sum)" ]; then
+            echo "FAIL: go.mod/go.sum should not be modified"
+            git status --porcelain
+            exit 1
+          fi
+          if [ -d build/binary ]; then
+            echo "FAIL: no release build expected"
+            exit 1
+          fi
+          echo "PASS"

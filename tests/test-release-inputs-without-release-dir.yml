@@ -1,0 +1,36 @@
+name: Test release inputs without release-dir skip the build
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          release-dir: ""
+          release-application-name: myapp
+          release-architecture: amd64
+          release-build-tags: lambda.norpc
+          release-type: binary
+          release-os: linux
+      - name: Assert no build happened
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected success"
+            exit 1
+          fi
+          if [ -e "build/binary/myapp/amd64/main" ]; then
+            echo "FAIL: binary should not have been built without release-dir"
+            exit 1
+          fi
+          if [ -n "$(git status --porcelain -- go.mod go.sum)" ]; then
+            echo "FAIL: go.mod/go.sum should not be modified"
+            git status --porcelain
+            exit 1
+          fi
+          echo "PASS"

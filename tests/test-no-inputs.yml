@@ -1,0 +1,32 @@
+name: Test no inputs (all steps skipped)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+      - name: Assert action succeeded without side effects
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected success"
+            exit 1
+          fi
+          helper="$(git config --global --get credential.https://github.com.helper || true)"
+          echo "credential helper: '$helper'"
+          if [ -n "$helper" ]; then
+            echo "FAIL: credential helper should not be configured without token input"
+            exit 1
+          fi
+          if [ -d build ] && ls build | grep -q .; then
+            if find build -name main -type f | grep -q .; then
+              echo "FAIL: no binary should be built without release-dir"
+              exit 1
+            fi
+          fi
+          echo "PASS"
