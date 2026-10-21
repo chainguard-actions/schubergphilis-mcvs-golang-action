@@ -106,7 +106,7 @@ runs:
     # Install task and the golang version that has been defined in the go.mod
     # file.
     #
-    - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+    - uses: chainguard-actions/actions-setup-go@738fd0174f4ff963ac8c2e9dfe83e3191b2777fb # v7.0.0
       if: |
         inputs.release-dir != '' ||
         inputs.task-install == 'yes' ||
@@ -135,7 +135,7 @@ runs:
     #
     - name: restore task from cache
       id: task-cache
-      uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      uses: chainguard-actions/actions-cache/restore@244dfed44d8c4e917b332280fb2c1063eda3d9be # v6.1.0
       if: |
         inputs.release-dir != '' ||
         inputs.task-install == 'yes' ||
@@ -188,7 +188,7 @@ runs:
       if: |
         steps.task-cache.outcome == 'success' &&
         steps.task-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      uses: chainguard-actions/actions-cache/save@244dfed44d8c4e917b332280fb2c1063eda3d9be # v6.1.0
       with:
         path: ~/go/bin/task
         key: ${{ steps.task-cache.outputs.cache-primary-key }}
@@ -240,7 +240,7 @@ runs:
     #
     # * Grype
     #
-    - uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
+    - uses: chainguard-actions/anchore-scan-action@4db7c9be373180645131c7341407f57d94ee1c05 # v7.4.2
       if: inputs.token != '' && inputs.testing-type == 'security-grype'
       with:
         grype-version: ${{ inputs.grype-version }}
@@ -422,7 +422,7 @@ runs:
           github.event_name == 'workflow_dispatch') &&
         startsWith(github.ref, 'refs/tags/') &&
         inputs.release-dir != ''
-      uses: svenstaro/upload-release-action@29e53e917877a24fad85510ded594ab3c9ca12de # 2.11.5
+      uses: chainguard-actions/svenstaro-upload-release-action@90ca861869858fb0b2fa42b334b359aab4f64ec9 # 2.11.5
       with:
         repo_token: ${{ inputs.token }}
         file: build/${{ inputs.release-type }}/${{ inputs.release-application-name }}/${{ inputs.release-architecture }}/main
