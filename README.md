@@ -1,34 +1,97 @@
-# schubergphilis/mcvs-golang-action
+# MCVS Golang Action
 
-The Mission Critical Vulnerability Scanner (MCVS) Golang action.
+[![GitHub release](https://img.shields.io/github/v/release/schubergphilis/mcvs-golang-action)](https://github.com/schubergphilis/mcvs-golang-action/releases)
+[![License](https://img.shields.io/github/license/schubergphilis/mcvs-golang-action)](LICENSE)
 
+<img src="./assets/logos/mcvs-golang-action.png" width="250"></a>
 
-Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/schubergphilis/mcvs-golang-action](https://github.com/schubergphilis/mcvs-golang-action).
+The Mission Critical Vulnerability Scanner (MCVS) Golang Action repository is a
+collection of standardized tools to ensure a certain level of quality of a
+project with Go code.
 
-## Versions
+## Quickstart
 
-| Version | Tag | Upstream commit |
-|---------|-----|-----------------|
-| v3.11.21 | [`v3.11.21`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.11.21) | [`d7dc64e`](https://github.com/schubergphilis/mcvs-golang-action/commit/d7dc64eca3ec0c7b06a49f7cc9d962e76fa4a72b) |
-| v3.11.22 | [`v3.11.22`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.11.22) | [`ae2f6b5`](https://github.com/schubergphilis/mcvs-golang-action/commit/ae2f6b574119123e8ee0f457a1aace702947931b) |
-| v3.11.23 | [`v3.11.23`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.11.23) | [`e0c6f6e`](https://github.com/schubergphilis/mcvs-golang-action/commit/e0c6f6e1d44644003299de4f628b369100388d98) |
-| v3.12.1 | [`v3.12.1`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.12.1) | [`9be40ce`](https://github.com/schubergphilis/mcvs-golang-action/commit/9be40cef638ab18188c47a8bba96026fedc19370) |
-| v3.12.10 | [`v3.12.10`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.12.10) | [`feb5e49`](https://github.com/schubergphilis/mcvs-golang-action/commit/feb5e495f4576267e51d505cc763cd729f3ba27c) |
-| v3.12.11 | [`v3.12.11`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.12.11) | [`d802ce1`](https://github.com/schubergphilis/mcvs-golang-action/commit/d802ce11660d811a1440e898a2e2721f49521627) |
-| v3.12.12 | [`v3.12.12`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.12.12) | [`7579f67`](https://github.com/schubergphilis/mcvs-golang-action/commit/7579f67fc1b878af701642b36cec45839860d206) |
-| v3.12.13 | [`v3.12.13`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.12.13) | [`a190fda`](https://github.com/schubergphilis/mcvs-golang-action/commit/a190fda2297c72577359b2b4a7720a451c1254d4) |
-| v3.12.16 | [`v3.12.16`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.12.16) | [`a7ca733`](https://github.com/schubergphilis/mcvs-golang-action/commit/a7ca733f0d205d26d8179f58840532a715ca692f) |
-| v3.12.2 | [`v3.12.2`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.12.2) | [`0ab2d97`](https://github.com/schubergphilis/mcvs-golang-action/commit/0ab2d975e4817fa1c9c2b47af8ad17a99282c3d9) |
-| v3.12.4 | [`v3.12.4`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.12.4) | [`f1f2fd6`](https://github.com/schubergphilis/mcvs-golang-action/commit/f1f2fd68bb73d450da38a9ca894b4624dd1f9c87) |
-| v3.12.5 | [`v3.12.5`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.12.5) | [`4da5f7c`](https://github.com/schubergphilis/mcvs-golang-action/commit/4da5f7c1f8c4d6925e28d120199822f91838ecb7) |
-| v3.12.6 | [`v3.12.6`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.12.6) | [`8247390`](https://github.com/schubergphilis/mcvs-golang-action/commit/8247390f9e7946ca5fe9cc70b7bb51bf7cec1d1b) |
-| v3.12.7 | [`v3.12.7`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.12.7) | [`9d69708`](https://github.com/schubergphilis/mcvs-golang-action/commit/9d69708e0c9b1ba837c4e156ef5125e03117ea18) |
-| v3.12.8 | [`v3.12.8`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.12.8) | [`eaa6dc1`](https://github.com/schubergphilis/mcvs-golang-action/commit/eaa6dc1ffea2989eba7f2edff23a367cab4aa753) |
-| v3.12.9 | [`v3.12.9`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.12.9) | [`128db79`](https://github.com/schubergphilis/mcvs-golang-action/commit/128db795d122d789a33f3e6d47634674179d8b08) |
-| v3.13.1 | [`v3.13.1`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.13.1) | [`00ab2d1`](https://github.com/schubergphilis/mcvs-golang-action/commit/00ab2d14c61f68fd0187112817822c3734707348) |
-| v3.13.2 | [`v3.13.2`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.13.2) | [`2cc5d08`](https://github.com/schubergphilis/mcvs-golang-action/commit/2cc5d08f34951b321bdc71290b2a7a2250b06ecf) |
-| v3.13.3 | [`v3.13.3`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.13.3) | [`8e8fe6d`](https://github.com/schubergphilis/mcvs-golang-action/commit/8e8fe6ddde10a3264aa9dd53841148896180e993) |
-| v3.13.4 | [`v3.13.4`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.13.4) | [`968881c`](https://github.com/schubergphilis/mcvs-golang-action/commit/968881c057a92b9e2ae5895383b31a06a79acd55) |
+### Locally
+
+Create a `Taskfile.yml` with the following content:
+
+```yml
+---
+version: 3
+
+vars:
+  REMOTE_URL: https://raw.githubusercontent.com
+  REMOTE_URL_REF: v3.12.12
+  REMOTE_URL_REPO: schubergphilis/mcvs-golang-action
+
+includes:
+  remote: >-
+    {{.REMOTE_URL}}/{{.REMOTE_URL_REPO}}/{{.REMOTE_URL_REF}}/build/task.yml
+```
+
+and run one of the most common tasks:
+
+```zsh
+task remote:test --yes
+task remote:test-integration --yes
+task remote:lint --yes
+task remote:coverage --yes
+task remote:osv-scanner --yes
+```
+
+You can use `task --list-all` to get a list of all available tasks.
+Alternatively, if you have [configured
+completions](https://taskfile.dev/installation/#setup-completions) in your
+shell, you can tab to get a list of available tasks.
+
+### GitHub
+
+#### Basic Example
+
+For a simple project that needs standard testing and linting, create a `.github/workflows/golang.yml` file:
+
+```yml
+---
+name: Golang
+"on": pull_request
+permissions:
+  contents: read
+  packages: read
+jobs:
+  MCVS-golang-action:
+    strategy:
+      matrix:
+        args:
+          - testing-type: "unit"
+          - testing-type: "lint"
+          - testing-type: "coverage"
+          - testing-type: "security-golang-modules"
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4.1.1
+      - uses: schubergphilis/mcvs-golang-action@v3
+        with:
+          testing-type: ${{ matrix.args.testing-type }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+This basic configuration will run unit tests, linting, code coverage checks, and security scanning on your Go code.
+
+## Documentation
+
+- [GitHub Action](docs/overview.md): the steps the action runs.
+- [Versioning](docs/versioning.md): which version tag to use.
+- [Taskfile](docs/taskfile.md): what the remote Taskfile offers and how to
+  get started with Task.
+- [Action inputs](docs/action-inputs.md): advanced workflow example and all
+  inputs of the GitHub Action.
+- [Taskfile variables](docs/taskfile-variables.md): variables that can be
+  overridden when including the Taskfile.
+- [Build tags](docs/build-tags.md): integration, component and e2e tests.
+- [Linting](docs/linting.md): automatically fixing linting issues.
+- [Releases](docs/releases.md): building binaries as release assets.
+- [osv-scanner](docs/osv-scanner.md): security scanning and temporarily
+  ignoring vulnerabilities.
 
 ## Privacy
 

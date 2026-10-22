@@ -1,0 +1,31 @@
+name: Test tuning inputs are accepted when security-grype is skipped without token
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          testing-type: security-grype
+          grype-version: v0.87.0
+          build-tags: component
+          golangci-timeout: "5"
+          test-timeout: 10m
+          code-coverage-timeout: 10m
+      - name: Assert action succeeded without running anything heavy
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected success"
+            exit 1
+          fi
+          if [ -d "$GITHUB_WORKSPACE/build/binary" ]; then
+            echo "FAIL: no release build should have happened"
+            exit 1
+          fi
+          echo "PASS"

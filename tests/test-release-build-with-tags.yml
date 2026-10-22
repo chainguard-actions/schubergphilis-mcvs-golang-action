@@ -1,0 +1,62 @@
+name: Test release binary build with build tags
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create a stdlib-only main package with a tag-guarded file
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/releasesrc"
+          cat > "$GITHUB_WORKSPACE/releasesrc/main.go" <<'EOF'
+          package main
+
+          import "fmt"
+
+          var flavour = "untagged"
+
+          func main() {
+          	fmt.Println("flavour=" + flavour)
+          }
+          EOF
+          cat > "$GITHUB_WORKSPACE/releasesrc/tagged.go" <<'EOF'
+          //go:build customtag
+
+          package main
+
+          func init() {
+          	flavour = "customtag"
+          }
+          EOF
+      - id: action
+        uses: .
+        with:
+          release-dir: releasesrc
+          release-application-name: myapp
+          release-architecture: amd64
+          release-type: binary
+          release-build-tags: customtag
+          token: ${{ github.token }}
+      - name: Assert binary was built with the build tag
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected success"
+            exit 1
+          fi
+          BIN="$GITHUB_WORKSPACE/build/binary/myapp/amd64/main"
+          ls -la "$(dirname "$BIN")" || true
+          if [ ! -f "$BIN" ]; then
+            echo "FAIL: expected binary at $BIN"
+            exit 1
+          fi
+          OUT="$("$BIN")"
+          echo "binary output: $OUT"
+          if [ "$OUT" != "flavour=customtag" ]; then
+            echo "FAIL: expected binary built with customtag build tag"
+            exit 1
+          fi
+          echo "PASS"
