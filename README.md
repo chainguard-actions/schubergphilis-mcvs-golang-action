@@ -30,6 +30,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | v3.13.3 | [`v3.13.3`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.13.3) | [`8e8fe6d`](https://github.com/schubergphilis/mcvs-golang-action/commit/8e8fe6ddde10a3264aa9dd53841148896180e993) |
 | v3.13.4 | [`v3.13.4`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.13.4) | [`968881c`](https://github.com/schubergphilis/mcvs-golang-action/commit/968881c057a92b9e2ae5895383b31a06a79acd55) |
 | v3.13.5 | [`v3.13.5`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.13.5) | [`7d83ee3`](https://github.com/schubergphilis/mcvs-golang-action/commit/7d83ee355f04e7f04baeda11f9c6f1946cabbd26) |
+| v3.13.6 | [`v3.13.6`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.13.6) | [`14d7f6a`](https://github.com/schubergphilis/mcvs-golang-action/commit/14d7f6a9f2306a37c37fd438865c94b4a52d72ff) |
 
 ## Privacy
 
