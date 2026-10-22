@@ -1,0 +1,35 @@
+name: Test tuning inputs without testing-type are no-op
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          build-tags: component
+          code-coverage-timeout: 10m
+          golangci-timeout: "5"
+          test-timeout: 5m
+          grype-version: v0.80.0
+          token: dummy-token-not-used
+      - name: Assert action succeeded without running any scans
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected success"
+            exit 1
+          fi
+          if [ -n "$(find "$GITHUB_WORKSPACE/build" -type f -name main 2>/dev/null)" ]; then
+            echo "FAIL: release build should not have run"
+            exit 1
+          fi
+          if git config --global --get credential.https://github.com.helper >/dev/null 2>&1; then
+            echo "FAIL: credential helper should not have been configured"
+            exit 1
+          fi
+          echo "PASS"
