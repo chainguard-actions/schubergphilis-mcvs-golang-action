@@ -135,7 +135,7 @@ runs:
     #
     - name: restore task from cache
       id: task-cache
-      uses: chainguard-actions/actions-cache/restore@244dfed44d8c4e917b332280fb2c1063eda3d9be # v6.1.0
+      uses: chainguard-actions/actions-cache/restore@46c2783c2418d3de33490be27a0d86c6268bc4fd # v6.1.0
       if: |
         inputs.release-dir != '' ||
         inputs.task-install == 'yes' ||
@@ -188,7 +188,7 @@ runs:
       if: |
         steps.task-cache.outcome == 'success' &&
         steps.task-cache.outputs.cache-hit != 'true'
-      uses: chainguard-actions/actions-cache/save@244dfed44d8c4e917b332280fb2c1063eda3d9be # v6.1.0
+      uses: chainguard-actions/actions-cache/save@46c2783c2418d3de33490be27a0d86c6268bc4fd # v6.1.0
       with:
         path: ~/go/bin/task
         key: ${{ steps.task-cache.outputs.cache-primary-key }}
