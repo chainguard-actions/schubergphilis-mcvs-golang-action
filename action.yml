@@ -422,7 +422,7 @@ runs:
           github.event_name == 'workflow_dispatch') &&
         startsWith(github.ref, 'refs/tags/') &&
         inputs.release-dir != ''
-      uses: chainguard-actions/svenstaro-upload-release-action@90ca861869858fb0b2fa42b334b359aab4f64ec9 # 2.11.5
+      uses: chainguard-actions/svenstaro-upload-release-action@666b699ad0657e38fed485739c25489579c6845f # 2.11.5
       with:
         repo_token: ${{ inputs.token }}
         file: build/${{ inputs.release-type }}/${{ inputs.release-application-name }}/${{ inputs.release-architecture }}/main
