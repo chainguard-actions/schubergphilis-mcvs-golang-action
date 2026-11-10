@@ -240,7 +240,7 @@ runs:
     #
     # * Grype
     #
-    - uses: chainguard-actions/anchore-scan-action@4db7c9be373180645131c7341407f57d94ee1c05 # v7.4.2
+    - uses: chainguard-actions/anchore-scan-action@c0ec3af557c5684f75ff122d1560e8de876c57ae # v7.4.2
       if: inputs.token != '' && inputs.testing-type == 'security-grype'
       with:
         grype-version: ${{ inputs.grype-version }}
@@ -422,7 +422,7 @@ runs:
           github.event_name == 'workflow_dispatch') &&
         startsWith(github.ref, 'refs/tags/') &&
         inputs.release-dir != ''
-      uses: chainguard-actions/svenstaro-upload-release-action@90ca861869858fb0b2fa42b334b359aab4f64ec9 # 2.11.5
+      uses: chainguard-actions/svenstaro-upload-release-action@666b699ad0657e38fed485739c25489579c6845f # 2.11.5
       with:
         repo_token: ${{ inputs.token }}
         file: build/${{ inputs.release-type }}/${{ inputs.release-application-name }}/${{ inputs.release-architecture }}/main
