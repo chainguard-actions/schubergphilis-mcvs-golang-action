@@ -1,0 +1,55 @@
+name: Test release binary build with build tags
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create an untracked main package to build
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/act-release-src"
+          cat > "$GITHUB_WORKSPACE/act-release-src/main.go" <<'EOF'
+          package main
+
+          import "fmt"
+
+          func main() {
+          	fmt.Println("hello from act")
+          }
+          EOF
+      - id: action
+        uses: .
+        with:
+          release-dir: act-release-src
+          release-application-name: myapp
+          release-architecture: amd64
+          release-os: linux
+          release-type: binary
+          release-build-tags: lambda.norpc
+          token: ${{ github.token }}
+      - name: Assert binary was built at the expected path
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected success"
+            exit 1
+          fi
+          BIN="$GITHUB_WORKSPACE/build/binary/myapp/amd64/main"
+          ls -la "$GITHUB_WORKSPACE/build/binary/myapp/amd64" || true
+          if [ ! -f "$BIN" ]; then
+            echo "FAIL: binary not found at $BIN"
+            exit 1
+          fi
+          if command -v file >/dev/null 2>&1; then
+            file "$BIN"
+          fi
+          OUT="$("$BIN")"
+          echo "binary output: $OUT"
+          if [ "$OUT" != "hello from act" ]; then
+            echo "FAIL: unexpected binary output"
+            exit 1
+          fi
+          echo "PASS"
