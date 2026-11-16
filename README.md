@@ -32,6 +32,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | v3.13.5 | [`v3.13.5`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.13.5) | [`7d83ee3`](https://github.com/schubergphilis/mcvs-golang-action/commit/7d83ee355f04e7f04baeda11f9c6f1946cabbd26) | [`HARDENING.md`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/blob/v3.13.5/HARDENING.md) |
 | v3.13.6 | [`v3.13.6`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.13.6) | [`14d7f6a`](https://github.com/schubergphilis/mcvs-golang-action/commit/14d7f6a9f2306a37c37fd438865c94b4a52d72ff) | [`HARDENING.md`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/blob/v3.13.6/HARDENING.md) |
 | v3.13.7 | [`v3.13.7`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.13.7) | [`8fc63aa`](https://github.com/schubergphilis/mcvs-golang-action/commit/8fc63aa39c2f5eb6b6210f1e4769557f8f0dd40e) | [`HARDENING.md`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/blob/v3.13.7/HARDENING.md) |
+| v3.13.8 | [`v3.13.8`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/tree/v3.13.8) | [`d52c33c`](https://github.com/schubergphilis/mcvs-golang-action/commit/d52c33cafa62266e3144d0fa0df09777e6a6d3d3) | [`HARDENING.md`](https://github.com/chainguard-actions/schubergphilis-mcvs-golang-action/blob/v3.13.8/HARDENING.md) |
 
 ## Privacy
 
