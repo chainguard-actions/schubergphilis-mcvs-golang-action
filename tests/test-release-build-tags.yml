@@ -1,0 +1,37 @@
+name: Test release binary build with build tags and cross-arch
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          release-dir: tests/fixtures/hello
+          release-application-name: hello-lambda
+          release-architecture: arm64
+          release-type: zip
+          release-os: linux
+          release-build-tags: lambda.norpc
+      - name: Assert arm64 binary was built
+        run: |
+          bin="$GITHUB_WORKSPACE/build/zip/hello-lambda/arm64/main"
+          if [ ! -f "$bin" ]; then
+            echo "FAIL: $bin not found"
+            ls -R "$GITHUB_WORKSPACE/build" || true
+            exit 1
+          fi
+          if [ ! -s "$bin" ]; then
+            echo "FAIL: binary is empty"
+            exit 1
+          fi
+          # ELF header: bytes 18-19 = e_machine; 0xb7 0x00 = AArch64
+          machine="$(od -An -tx1 -j18 -N2 "$bin" | tr -d ' \n')"
+          echo "e_machine: $machine"
+          if [ "$machine" != "b700" ]; then
+            echo "FAIL: expected AArch64 binary"
+            exit 1
+          fi
+          echo "PASS"

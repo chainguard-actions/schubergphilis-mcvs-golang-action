@@ -1,0 +1,31 @@
+name: Test tuning inputs are accepted and gated steps stay skipped without testing-type
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          token: ${{ github.token }}
+          build-tags: component
+          code-coverage-timeout: 5m
+          golangci-timeout: "10"
+          grype-version: v0.87.0
+          test-timeout: 10m
+      - name: Assert action succeeded and built nothing
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected success"
+            exit 1
+          fi
+          if [ -d "$GITHUB_WORKSPACE/build" ] && [ -n "$(ls -A "$GITHUB_WORKSPACE/build" 2>/dev/null | grep -v '^task.yml$')" ] && [ -d "$GITHUB_WORKSPACE/build/binary" ]; then
+            echo "FAIL: build output unexpectedly created"
+            exit 1
+          fi
+          echo "PASS"

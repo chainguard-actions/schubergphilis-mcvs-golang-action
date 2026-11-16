@@ -1,0 +1,40 @@
+name: Test release binary build (no tags, not uploaded on branch ref)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          release-dir: tests/fixtures/hello
+          release-application-name: hello
+          release-architecture: amd64
+          release-type: binary
+          release-os: linux
+      - name: Assert binary was built and runs
+        run: |
+          bin="$GITHUB_WORKSPACE/build/binary/hello/amd64/main"
+          if [ ! -f "$bin" ]; then
+            echo "FAIL: $bin not found"
+            ls -R "$GITHUB_WORKSPACE/build" || true
+            exit 1
+          fi
+          out="$("$bin")"
+          echo "output: $out"
+          case "$out" in
+            "hello version:"*) ;;
+            *) echo "FAIL: unexpected output"; exit 1 ;;
+          esac
+          if [ "$out" = "hello version:dev" ]; then
+            echo "FAIL: ldflags version was not injected"
+            exit 1
+          fi
+          echo "PASS"
+      - name: Assert task was installed
+        run: |
+          export PATH="$PATH:$HOME/go/bin"
+          task --version
+          echo "PASS"
