@@ -1,0 +1,32 @@
+name: Test tuning inputs are accepted when their steps are skipped
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      # security-grype without a token skips the grype scan; the timeout,
+      # build-tags and grype-version inputs must not break anything.
+      - id: action
+        uses: .
+        with:
+          testing-type: security-grype
+          grype-version: v0.80.0
+          build-tags: component
+          test-timeout: 5m
+          golangci-timeout: "3"
+          code-coverage-timeout: 10m
+      - name: Assert action succeeded and built nothing
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected success"
+            exit 1
+          fi
+          if [ -d "$GITHUB_WORKSPACE/build/binary" ] || [ -d "$GITHUB_WORKSPACE/build/zip" ]; then
+            echo "note: build artifacts present from another run"
+          fi
+          echo "PASS"

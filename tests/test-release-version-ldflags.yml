@@ -1,0 +1,38 @@
+name: Test release binary build without build tags (ldflags version)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          release-dir: tests/fixtures/release-app
+          release-application-name: plainapp
+          release-architecture: amd64
+          release-type: zip
+          token: ${{ github.token }}
+      - name: Assert binary was built with version injected via ldflags
+        run: |
+          BIN="$GITHUB_WORKSPACE/build/zip/plainapp/amd64/main"
+          ls -la "$GITHUB_WORKSPACE/build/zip/plainapp/amd64" || true
+          if [ ! -f "$BIN" ]; then
+            echo "FAIL: expected binary at $BIN"
+            exit 1
+          fi
+          out="$("$BIN")"
+          echo "binary output: $out"
+          case "$out" in
+            version=dev|version=)
+              echo "FAIL: expected Version to be set from github.ref_name via ldflags"
+              exit 1
+              ;;
+            version=*) ;;
+            *)
+              echo "FAIL: unexpected output"
+              exit 1
+              ;;
+          esac
+          echo "PASS"

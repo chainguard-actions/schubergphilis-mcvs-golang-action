@@ -1,0 +1,33 @@
+name: Test release binary build with release-build-tags
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          release-dir: tests/fixtures/release-app
+          release-application-name: myapp
+          release-architecture: amd64
+          release-os: linux
+          release-type: binary
+          release-build-tags: netgo
+          token: ${{ github.token }}
+      - name: Assert binary was built with tags (no ldflags version)
+        run: |
+          BIN="$GITHUB_WORKSPACE/build/binary/myapp/amd64/main"
+          ls -la "$GITHUB_WORKSPACE/build/binary/myapp/amd64" || true
+          if [ ! -f "$BIN" ]; then
+            echo "FAIL: expected binary at $BIN"
+            exit 1
+          fi
+          out="$("$BIN")"
+          echo "binary output: $out"
+          if [ "$out" != "version=dev" ]; then
+            echo "FAIL: expected 'version=dev' (tags build path does not set ldflags)"
+            exit 1
+          fi
+          echo "PASS"

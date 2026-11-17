@@ -1,0 +1,35 @@
+name: Test task installation
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      # task 3.54.0 (the default) needs go >= 1.26.4, but the fixture go.mod
+      # pins go 1.25.0, so we ask for an older task release that builds with it.
+      - id: action
+        uses: .
+        with:
+          task-install: "yes"
+          task-version: 3.40.0
+          go-version-file: tests/fixtures/go-version/go.mod
+      - name: Assert task installed with requested version
+        run: |
+          export PATH="$HOME/go/bin:$PATH"
+          if ! command -v task >/dev/null 2>&1; then
+            echo "FAIL: task not found on PATH"
+            exit 1
+          fi
+          version="$(task --version 2>&1)"
+          echo "task --version: $version"
+          if ! echo "$version" | grep -q '3\.40\.0'; then
+            echo "FAIL: expected task version 3.40.0"
+            exit 1
+          fi
+          if ! command -v go >/dev/null 2>&1; then
+            echo "FAIL: go not installed"
+            exit 1
+          fi
+          go version
+          echo "PASS"
